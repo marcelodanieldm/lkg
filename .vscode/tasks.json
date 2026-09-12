@@ -73,7 +73,7 @@
       "id": "tarea",
       "type": "pickString",
       "description": "¿Qué tarea?",
-      "options": ["prospeccion", "aprobaciones", "bandeja", "supervisor", "espejo", "postventa"],
+      "options": ["prospeccion", "seguimiento", "aprobaciones", "bandeja", "supervisor", "espejo", "postventa"],
       "default": "espejo"
     },
     {

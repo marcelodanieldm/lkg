@@ -100,6 +100,7 @@ cada minuto:
 | Tarea | Cuándo | Qué hace |
 |---|---|---|
 | `prospeccion` | 8:00, días hábiles | Busca, audita, redacta, consulta al guardián |
+| `seguimiento` | 8:00, días hábiles | Envía los pasos 2, 3 y 4 de la secuencia |
 | `aprobaciones` | cada 15 min | Envía lo que aprobaste, re-evaluándolo antes |
 | `bandeja` | cada 10 min | Lee Gmail: baja → rebote → clasificación |
 | `supervisor` | 19:00 | Métricas, cinco alarmas, y puede pausar el sistema |

@@ -18,7 +18,7 @@ import { evaluar, registrar, usarFuente, VEREDICTO, huella } from '../../../../l
 import { auditar } from '../../../../lib/core/audit-engine.js';
 import { generarInformeHTML } from '../../../../lib/core/report.js';
 import { desdePlacesApi, aplicarAnalisisWeb } from '../../../../lib/core/normalize.js';
-import { SECUENCIA_PROSPECCION } from '../../../../lib/core/sequences.js';
+import { SECUENCIA_PROSPECCION, render } from '../../../../lib/core/sequences.js';
 import { agenteProspector, agenteRedactor, agenteConversador, agenteSupervisor } from '../../../../lib/ia/gemini.js';
 import * as ws from '../../../../lib/integrations/workspace.js';
 import { generarPresupuestos, generarAlternativasReduccion } from '../../../../lib/core/quote-engine.js';
@@ -169,6 +169,94 @@ const TAREAS = {
       } catch (e) {
         await db.agregar('Bitacora', {
           agente: 'prospector', accion: 'auditar', lead_id: p.id,
+          decision: 'error', razon: e.message.slice(0, 400),
+        });
+      }
+    }
+    return res;
+  },
+
+  /** Seguimiento de los leads con toques pendientes (pasos 2, 3 y 4). */
+  async seguimiento() {
+    const [tope, pausa] = await Promise.all([
+      db.config('auditorias_por_corrida', 25),
+      db.config('pausa_general', false),
+    ]);
+    if (pausa) return { saltada: true, razon: 'pausa_general activa' };
+
+    const cola = await db.colaDeHoy();
+    const mensajes = await db.leer('Mensajes');
+
+    const candidatos = (cola || []).slice(0, Number(tope));
+    const res = { procesados: 0, veredictos: {}, agotados: 0, costo: 0 };
+
+    for (const item of candidatos) {
+      try {
+        const salientes = mensajes.filter(m => m.lead_id === item.id && m.direccion === 'saliente');
+        const pasosEnviados = salientes.map(m => Number(m.paso)).filter(p => !isNaN(p) && p > 0);
+        const ultimoPaso = pasosEnviados.length ? Math.max(...pasosEnviados) : 0;
+
+        // El primer paso lo manda prospección; esta tarea se ocupa únicamente de los posteriores.
+        if (ultimoPaso === 0) continue;
+
+        const pasoSiguiente = ultimoPaso + 1;
+        const pasoDef = SECUENCIA_PROSPECCION.find(p => p.paso === pasoSiguiente);
+
+        // Sin paso siguiente la secuencia llegó a su fin y el lead se marca como perdido.
+        if (!pasoDef) {
+          await db.actualizar('Leads', {
+            id: item.id,
+            etapa: 'perdido',
+            motivo_perdida: 'secuencia agotada sin respuesta',
+          });
+          res.agotados++;
+          continue;
+        }
+
+        const lead = await db.uno('Leads', l => l.id === item.id, { sinCache: true }) || item;
+        if (!lead?.email) continue;
+
+        const auditoria = {
+          score: lead.score ?? 50,
+          potencial: lead.potencial ?? 80,
+          banda: { etiqueta: 'oportunidad de mejora' },
+          meta: { negocio: lead.negocio },
+          hallazgos: [],
+          fortalezas: [],
+        };
+
+        const { salida: msg, costo } = await agenteRedactor({
+          auditoria,
+          percentil: lead.percentil ?? null,
+          urlInforme: lead.informe_url || `${APP()}/informe/${lead.id}`,
+          contacto: lead.contacto_nombre,
+        });
+        res.costo += costo;
+        res.procesados++;
+
+        const intento = {
+          tipo: 'prospeccion',
+          canal: pasoDef.canal || 'email',
+          leadId: lead.id,
+          negocio: lead.negocio,
+          destinatario: lead.email,
+          asunto: msg.asunto || render(pasoDef.asunto || '', { negocio: lead.negocio }),
+          cuerpo: msg.cuerpo,
+          paso: pasoSiguiente,
+          agente: 'redactor',
+          confianza: msg.confianza,
+          costo,
+        };
+
+        const v = await evaluar(intento);
+        await registrar(intento, v).catch(() => {});
+        res.veredictos[v.veredicto] = (res.veredictos[v.veredicto] || 0) + 1;
+
+        if (v.veredicto === VEREDICTO.APROBACION) await encolar(intento, v);
+        else if (v.veredicto === VEREDICTO.PERMITIDO) await enviarYRegistrar(intento, 'guardian');
+      } catch (e) {
+        await db.agregar('Bitacora', {
+          agente: 'redactor', accion: 'seguimiento', lead_id: item.id,
           decision: 'error', razon: e.message.slice(0, 400),
         });
       }

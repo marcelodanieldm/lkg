@@ -107,13 +107,38 @@ test('PROPIEDAD CRÍTICA: la prospección nunca llama a enviar directamente', ()
   const tareas = leer('app/api/cron/[tarea]/route.js');
   const prospeccion = tareas.slice(
     tareas.indexOf('async prospeccion()'),
-    tareas.indexOf('async aprobaciones()')
+    tareas.indexOf('async seguimiento()')
   );
   assert.ok(prospeccion.length > 500, 'no se pudo aislar la tarea de prospección');
   assert.ok(!/\bawait enviar\(/.test(prospeccion),
     'la prospección tiene una llamada directa a enviar(): tiene que ir por enviarYRegistrar()');
   assert.ok(/await evaluar\(intento\)/.test(prospeccion),
     'la prospección tiene que consultar al guardián');
+});
+
+test('PROPIEDAD CRÍTICA: el seguimiento nunca llama a enviar directamente y consulta al guardián', () => {
+  const tareas = leer('app/api/cron/[tarea]/route.js');
+  const seguimiento = tareas.slice(
+    tareas.indexOf('async seguimiento()'),
+    tareas.indexOf('async aprobaciones()')
+  );
+  assert.ok(seguimiento.length > 500, 'no se pudo aislar la tarea de seguimiento');
+  assert.ok(!/\bawait enviar\(/.test(seguimiento),
+    'la tarea de seguimiento tiene una llamada directa a enviar(): tiene que ir por enviarYRegistrar()');
+  assert.ok(/await evaluar\(intento\)/.test(seguimiento),
+    'la tarea de seguimiento tiene que consultar al guardián antes de enviar');
+});
+
+test('el seguimiento cierra los leads como perdidos cuando se agota la secuencia', () => {
+  const tareas = leer('app/api/cron/[tarea]/route.js');
+  const seguimiento = tareas.slice(
+    tareas.indexOf('async seguimiento()'),
+    tareas.indexOf('async aprobaciones()')
+  );
+  assert.ok(/motivo_perdida:\s*['"]secuencia agotada sin respuesta['"]/.test(seguimiento),
+    'la tarea de seguimiento debe marcar como perdido con motivo_perdida al agotar la secuencia');
+  assert.ok(/etapa:\s*['"]perdido['"]/.test(seguimiento),
+    'la tarea de seguimiento debe actualizar la etapa a perdido al agotar los pasos');
 });
 
 test('PROPIEDAD CRÍTICA: lo aprobado se vuelve a evaluar antes de salir', () => {

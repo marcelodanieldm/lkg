@@ -61,7 +61,7 @@ Places API + sitio web + captura asistida
 - `app/page.jsx` — la landing. Es la ÚNICA página pública indexable.
 - `app/(panel)/` — todo lo privado. El layout del grupo aplica el control de
   acceso, así que una pantalla nueva ahí adentro queda protegida sola.
-- `app/api/cron/[tarea]/` — las seis tareas. Reemplazan a los flujos de n8n.
+- `app/api/cron/[tarea]/` — las siete tareas. Reemplazan a los flujos de n8n.
   Las dispara `pg_cron`, no Vercel.
 - `supabase/migrations/` — el esquema, la seguridad de filas, los cron.
 
@@ -116,6 +116,7 @@ Places API + sitio web + captura asistida
   que un sistema así deje de mandar correos un lunes sin avisar.
 - **Vercel Hobby: un cron por día, ±59 minutos.** Por eso la programación vive
   en `pg_cron`. No muevas tareas al cron de Vercel.
+- **Prospección y seguimiento no corren al mismo minuto.** Si se ejecutaran en simultáneo, ambas tareas leerían el gasto diario antes de registrar sus envíos, creando una condición de carrera que superaría el `cupo_diario`. Prospección corre a las 11:00 UTC (8:00 AR) y seguimiento a las 13:00 UTC (10:00 AR).
 - **`noindex` es el default del layout raíz.** Solo la landing y el informe de
   ejemplo lo levantan. Una pantalla nueva queda fuera de los buscadores salvo
   que alguien lo decida a propósito — y un test verifica cuáles se declaran
