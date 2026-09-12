@@ -1,15 +1,34 @@
 {
-  "//": "Antigravity lee este archivo. VS Code usa .vscode/mcp.json, que tiene la misma lista con otra forma.",
+  "//": "Antigravity lee este archivo solo, por estar en .agents/mcp_config.json — no hay nada que instalar. También busca uno global en ~/.gemini/config/mcp_config.json, pero para un servidor que solo sirve a este proyecto conviene que viaje con el repositorio.",
+
+  "//_ojo": "Un MCP no le pasa al agente una conversación: le da HERRAMIENTAS. El contexto de este proyecto no viene de acá, viene de AGENTS.md y .agents/rules/, que Antigravity lee por su cuenta.",
+
+  "//_cuota": "Cada servidor que agregues es superficie que el agente puede explorar, y explorar gasta cuota. Dos alcanzan.",
+
   "mcpServers": {
     "supabase": {
+      "//": "Para que el agente pueda mirar el esquema y los datos sin que vos le pegues resultados de SQL a mano. En SOLO LECTURA a propósito: las migraciones se corren desde el editor de Supabase, revisadas por vos. Un agente con permiso de escritura sobre esta base puede borrar la lista de supresión.",
+      "//_token": "Sacalo de supabase.com/dashboard/account/tokens y ponelo en el entorno como SUPABASE_ACCESS_TOKEN. El project-ref es el subdominio de tu SUPABASE_URL.",
       "command": "npx",
-      "args": ["-y", "@supabase/mcp-server-supabase@latest", "--read-only", "--project-ref=TU_PROJECT_REF"],
-      "env": { "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}" },
-      "//": "En solo lectura a propósito: el agente consulta el esquema y los datos, pero las migraciones se corren a mano."
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--read-only",
+        "--project-ref=TU_PROJECT_REF"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
+      }
     },
-    "filesystem": {
+
+    "github": {
+      "//": "Para leer y abrir issues y pull requests sin salir del editor. Opcional: si trabajás solo y hacés push directo a main, sacalo y ahorrate la superficie.",
+      "//_token": "Un token clásico con alcance `repo` en GITHUB_TOKEN.",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
     }
   }
 }

@@ -35,6 +35,42 @@ De ahí salen cuatro reglas, y son la parte que de verdad importa:
 
 ---
 
+## Sobre los MCP, porque suele confundirse
+
+Un MCP **no le pasa al agente una conversación**: le da herramientas. No existe
+un servidor que "consuma este chat y lo ejecute", y no hay nada que instalar
+para que Antigravity sepa de qué se trata Lokigi.
+
+Lo que le da el contexto es el repositorio, y ya está puesto:
+
+| Archivo | Qué le dice |
+|---|---|
+| `AGENTS.md` | Cómo está armado, las reglas innegociables, las trampas conocidas |
+| `.agents/rules/*.md` | Guardrails, estilo y arquitectura, con `trigger: always_on` |
+| `.agents/PROMPTS.md` | Este archivo: qué falta hacer y con qué palabras pedirlo |
+| `.agents/mcp_config.json` | Los servidores MCP del proyecto |
+
+Antigravity lee los tres primeros por su cuenta al abrir la carpeta. El cuarto
+también: `.agents/mcp_config.json` es exactamente la ruta donde los busca a
+nivel de proyecto (la global es `~/.gemini/config/mcp_config.json`, pero para
+servidores que solo sirven acá conviene que viajen con el repositorio).
+
+Vienen dos configurados, y los dos son gratis:
+
+- **supabase**, en solo lectura, para que el agente mire el esquema y los datos
+  sin que le pegues resultados de SQL a mano. En solo lectura a propósito: un
+  agente con permiso de escritura sobre esta base puede borrar la lista de
+  supresión.
+- **github**, opcional. Si trabajás solo y hacés push directo, sacalo.
+
+Antes de que funcionen hay que poner dos cosas en el entorno:
+`SUPABASE_ACCESS_TOKEN` y el `--project-ref` de tu proyecto.
+
+Y una advertencia de cuota: **cada servidor que agregues es superficie que el
+agente puede explorar, y explorar gasta.** Con dos alcanza.
+
+---
+
 ## P0 · El prompt con el que se abre cualquier sesión
 
 Pegalo primero, siempre. Cuesta poco y evita que el agente arranque explorando.
