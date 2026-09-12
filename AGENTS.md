@@ -118,6 +118,15 @@ Places API + sitio web + captura asistida
   ejemplo lo levantan. Una pantalla nueva queda fuera de los buscadores salvo
   que alguien lo decida a propósito — y un test verifica cuáles se declaran
   indexables.
+- **`sendUpdates=all` en Calendar es un envío.** Google le manda la invitación
+  al invitado por su cuenta, sin pasar por el guardián. `agendarLlamada()` viene
+  con `avisar: false` y así tiene que quedarse: el evento se crea en tu
+  calendario y el mensaje que se lo comunica al prospecto sale por el circuito
+  normal. Hay un test que lo verifica.
+- **Una integración que nadie llama no existe.** `agendarLlamada()` estuvo
+  exportada y sin usar durante un tiempo: parecía que Calendar andaba y no hacía
+  nada. Hay un test que falla si alguna función de `workspace.js` queda sin
+  enganchar a un flujo.
 - **La raíz es pública.** Si movés el panel de vuelta a `/`, un prospecto que
   entra al dominio ve una pantalla de acceso al CRM en vez de la página que le
   explica quién le escribió. Hay un test que lo impide.

@@ -279,6 +279,33 @@ test('la única lectura de Sheets está aislada y documentada', () => {
     'apareció una función de lectura nueva en workspace.js: si algo del sistema depende de ella, la planilla pasó a ser fuente de verdad');
 });
 
+test('PROPIEDAD CRÍTICA: una invitación de calendario no se manda sola', () => {
+  // Con `sendUpdates=all`, Google le manda el invite al invitado por su cuenta:
+  // un mensaje que llega a la casilla de un tercero sin pasar por el guardián.
+  const ws = leer('lib/integrations/workspace.js');
+  const fn = ws.slice(ws.indexOf('export async function agendarLlamada'));
+  assert.ok(/avisar = false/.test(fn), 'agendarLlamada avisa al invitado por defecto');
+  assert.ok(/sendUpdates=\$\{avisar \? 'all' : 'none'\}/.test(fn),
+    'el envío de la invitación no está detrás del interruptor');
+
+  const tareas = leer('app/api/cron/[tarea]/route.js');
+  assert.ok(!/avisar:\s*true/.test(tareas), 'una tarea programada manda la invitación sola');
+  assert.ok(/agendarLlamada\(\{[\s\S]{0,400}?avisar: false/.test(tareas),
+    'la tarea que agenda no declara avisar: false de forma explícita');
+});
+
+test('Calendar está enganchado al flujo, no solo definido', () => {
+  // Una función exportada que nadie llama es una integración que parece existir
+  // y no existe. Esto ya pasó con agendarLlamada.
+  const tareas = leer('app/api/cron/[tarea]/route.js');
+  for (const fn of ['agendarLlamada', 'proponerHorarios', 'crearPropuesta', 'archivarInforme',
+                    'crearPlanillaEspejo', 'volcarHoja']) {
+    assert.ok(tareas.includes(fn), `nada llama a ws.${fn}(): Workspace quedó a medias`);
+  }
+  // Y leerNotas se usa desde el panel, no desde las tareas.
+  assert.ok(leer('app/(panel)/leads/page.jsx').includes('leerNotas'), 'leerNotas quedó sin usar');
+});
+
 test('el espejo se rehace entero: limpia antes de escribir', () => {
   const ws = leer('lib/integrations/workspace.js');
   const v = ws.slice(ws.indexOf('export async function volcarHoja'));

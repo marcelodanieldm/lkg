@@ -114,3 +114,20 @@ order by s.creado_en desc;
 insert into config (clave, valor, nota) values
   ('avisar_solicitudes', 'TRUE', 'Mandarte un correo cuando alguien pide una auditoría desde la web')
 on conflict (clave) do nothing;
+
+-- ─────────────────────────────────────────────────────────────────────
+-- Los horarios que se le ofrecieron a un lead
+-- ─────────────────────────────────────────────────────────────────────
+-- El Conversador corre en una invocación y la respuesta del prospecto llega en
+-- otra, minutos u horas después. Para poder entender "el martes a las 10" hay
+-- que saber qué se le ofreció, así que la lista se guarda.
+--
+-- Se guarda la lista COMPLETA con sus fechas ISO, no solo las etiquetas: el
+-- modelo devuelve una posición (1, 2, 3) y la fecha sale de acá. Pedirle al
+-- modelo que devuelva un timestamp es pedirle que invente una zona horaria.
+
+alter table leads
+  add column if not exists horarios_ofrecidos jsonb;
+
+comment on column leads.horarios_ofrecidos is
+  'Horarios propuestos para la llamada: [{inicio, fin, etiqueta}]. El modelo elige por posición.';

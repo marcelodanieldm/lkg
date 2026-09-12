@@ -125,6 +125,16 @@ borra. Sheets, Docs, Drive y Calendar son superficies de trabajo.
 | **Drive** | Archivo de informes por mes | …nada. Es respaldo |
 | **Calendar** | La llamada, con Meet incluido | …nada. Podés agendar a mano |
 
+Sobre Calendar hay una decisión que conviene tener clara: cuando el prospecto
+elige uno de los tres horarios, el evento se crea **sin mandarle la
+invitación**. Con `sendUpdates=all` Google se la manda por su cuenta, y eso es
+un mensaje que llega a la casilla de un tercero sin pasar por el guardián. El
+evento queda en tu calendario con el enlace de Meet; quien se lo comunica es el
+mensaje que el guardián sí autorizó.
+
+Si el modelo se equivocó al interpretar la respuesta, lo peor que pasa es un
+evento de más en tu agenda. Nadie recibe nada.
+
 Todo lo que este módulo hace es **escribir**. La única lectura es
 `leerNotas()`, que trae la columna Z de la planilla para mostrarla al lado del
 lead — y no decide nada. Un test falla si aparece otra.

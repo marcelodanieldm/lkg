@@ -242,8 +242,13 @@ const TAREAS = {
         if (lead) await db.actualizar('Leads', { id: lead.id, etapa: 'perdido', notas: `rebote: ${m.asunto}` });
         res.rebotes++;
       } else if (lead) {
+        // Si en un toque anterior se le ofrecieron horarios, se los pasamos al
+        // clasificador para que pueda reconocer cuál eligió.
+        const ofrecidos = Array.isArray(lead.horarios_ofrecidos) ? lead.horarios_ofrecidos : [];
+
         const { salida: c, costo } = await agenteConversador({
           texto: m.texto, negocio: lead.negocio, score: lead.score, etapa: lead.etapa,
+          horarios: ofrecidos.map(h => h.etiqueta),
         });
         await db.agregar('Mensajes', {
           id: m.id, lead_id: lead.id, direccion: 'entrante', canal: 'email',
@@ -259,11 +264,20 @@ const TAREAS = {
         // Docs; si mostró interés se calculan tres horarios. En los dos casos
         // el resultado queda listo y a la vista, pero lo que sale hacia
         // afuera sigue pasando por el guardián como cualquier otro mensaje.
-        if (c.intencion === 'precio') {
+        // Eligió uno de los horarios que se le habían ofrecido.
+        const elegido = ofrecidos[(c.horario_elegido ?? 0) - 1];
+        if (elegido && ws.configurado()) {
+          await agendar(lead, elegido).catch(e => registrarFalla('agenda', lead.id, e));
+          res.agendados = (res.agendados || 0) + 1;
+        } else if (c.intencion === 'precio') {
           await prepararPropuesta(lead).catch(e => registrarFalla('cotizador', lead.id, e));
           res.propuestas = (res.propuestas || 0) + 1;
-        } else if (c.intencion === 'interes' && ws.configurado()) {
-          res.horarios = ws.proponerHorarios({ cantidad: 3 }).map(h => h.etiqueta);
+        } else if (c.intencion === 'interes' && ws.configurado() && !ofrecidos.length) {
+          // Se calculan y se guardan; el mensaje que los ofrece lo redacta el
+          // agente y lo autoriza el guardián, como cualquier otro.
+          const horarios = ws.proponerHorarios({ cantidad: 3 });
+          await db.actualizar('Leads', { id: lead.id, horarios_ofrecidos: horarios });
+          res.horarios = horarios.map(h => h.etiqueta);
         }
         await db.agregar('Bitacora', {
           agente: 'conversador', accion: 'clasificar', lead_id: lead.id,
@@ -575,6 +589,51 @@ async function prepararPropuesta(lead) {
   );
 
   return doc;
+}
+
+/**
+ * Agenda la llamada cuando el prospecto eligió un horario.
+ *
+ * El evento se crea SIN avisarle a él: Google mandaría la invitación por su
+ * cuenta, y eso es un mensaje que llega a la casilla de un tercero sin pasar
+ * por el guardián. El evento queda en tu calendario con el enlace de Meet, y
+ * quien se lo comunica es el mensaje que el guardián sí autorizó.
+ *
+ * Si el modelo se equivocó al interpretar la respuesta, lo peor que pasa es un
+ * evento de más en tu agenda. Nadie recibe nada.
+ */
+async function agendar(lead, horario) {
+  const evento = await ws.agendarLlamada({
+    negocio: lead.negocio,
+    email: lead.email,
+    inicio: horario.inicio,
+    fin: horario.fin,
+    avisar: false,
+    notas: `Repaso de la auditoría de ${lead.negocio} (${lead.score}/100). ` +
+           `Informe: ${lead.informe_url || '—'}`,
+    calendarId: await db.config('calendar_id', 'primary'),
+  });
+
+  await db.actualizar('Leads', {
+    id: lead.id,
+    etapa: 'interesado',
+    evento_url: evento.url,
+    agendado_en: horario.inicio,
+    // Ya eligió: se limpia la lista para que una respuesta posterior no
+    // vuelva a interpretarse como una elección.
+    horarios_ofrecidos: null,
+  });
+
+  await avisarOperador(
+    `Lokigi · ${lead.negocio} eligió un horario`,
+    `${lead.negocio} confirmó para ${horario.etiqueta}.\n\n` +
+    `El evento ya está en tu calendario con el enlace de Meet:\n${evento.url}\n` +
+    (evento.meet ? `Meet: ${evento.meet}\n` : '') +
+    `\nOJO: NO se le mandó la invitación. El mensaje que se lo confirma sale por el ` +
+    `circuito normal y lo vas a ver en la cola de aprobación.`
+  );
+
+  return evento;
 }
 
 const registrarFalla = (agente, leadId, e) =>
