@@ -1,0 +1,20 @@
+{
+  "servers": {
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase@latest", "--read-only", "--project-ref=${input:projectRef}"],
+      "envFile": "${workspaceFolder}/.env.local"
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${workspaceFolder}"]
+    }
+  },
+  "inputs": [
+    {
+      "id": "projectRef",
+      "type": "promptString",
+      "description": "Project ref de Supabase (el subdominio de tu SUPABASE_URL)"
+    }
+  ]
+}

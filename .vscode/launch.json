@@ -1,0 +1,43 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Lokigi · dev (Next)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "envFile": "${workspaceFolder}/.env.local",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Lokigi · depurar un test",
+      "type": "node",
+      "request": "launch",
+      "program": "${file}",
+      "args": ["--test"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Lokigi · verificar (preflight)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/verificar.js",
+      "envFile": "${workspaceFolder}/.env.local",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Lokigi · autorizar Google",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/google-auth.js",
+      "envFile": "${workspaceFolder}/.env.local",
+      "console": "integratedTerminal"
+    }
+  ]
+}

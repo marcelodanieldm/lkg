@@ -1,0 +1,91 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Lokigi · tests",
+      "type": "shell",
+      "command": "npm test",
+      "group": { "kind": "test", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Lokigi · verificar (preflight)",
+      "detail": "Entorno, migraciones, Google, y los 4 casos que TIENEN que bloquearse.",
+      "type": "shell",
+      "command": "npm run verificar",
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Lokigi · antes de commitear",
+      "detail": "Lo que hay que pasar para dar un cambio por terminado.",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Lokigi · tests", "Lokigi · verificar (preflight)"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Lokigi · dev",
+      "type": "shell",
+      "command": "npm run dev",
+      "isBackground": true,
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Lokigi · build",
+      "type": "shell",
+      "command": "npm run build",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Lokigi · autorizar Google (una sola vez)",
+      "type": "shell",
+      "command": "npm run auth",
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Lokigi · migraciones a Supabase",
+      "type": "shell",
+      "command": "npx supabase db push",
+      "problemMatcher": []
+    },
+    {
+      "label": "Lokigi · disparar una tarea a mano",
+      "detail": "Corre una tarea programada sin esperar a pg_cron.",
+      "type": "shell",
+      "command": "curl -s -X POST \"${input:urlApp}/api/cron/${input:tarea}\" -H \"X-API-Key: $LOKIGI_API_KEY\" | head -c 2000",
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Lokigi · auditar un negocio",
+      "type": "shell",
+      "command": "curl -s \"${input:urlApp}/api/auditar?consulta=${input:consulta}&presupuesto=true\" -H \"X-API-Key: $LOKIGI_API_KEY\" | head -c 4000",
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "tarea",
+      "type": "pickString",
+      "description": "¿Qué tarea?",
+      "options": ["prospeccion", "aprobaciones", "bandeja", "supervisor", "espejo", "postventa"],
+      "default": "espejo"
+    },
+    {
+      "id": "urlApp",
+      "type": "promptString",
+      "description": "URL de la app",
+      "default": "http://localhost:3000"
+    },
+    {
+      "id": "consulta",
+      "type": "promptString",
+      "description": "Negocio a auditar (ej.: Parrilla Don José, Rosario)"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "GitHub.copilot",
+    "GitHub.copilot-chat",
+    "mikestead.dotenv",
+    "EditorConfig.EditorConfig",
+    "humao.rest-client",
+    "ms-azuretools.vscode-docker"
+  ],
+  "unwantedRecommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode"
+  ]
+}

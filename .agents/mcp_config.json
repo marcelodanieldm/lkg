@@ -1,0 +1,15 @@
+{
+  "//": "Antigravity lee este archivo. VS Code usa .vscode/mcp.json, que tiene la misma lista con otra forma.",
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase@latest", "--read-only", "--project-ref=TU_PROJECT_REF"],
+      "env": { "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}" },
+      "//": "En solo lectura a propósito: el agente consulta el esquema y los datos, pero las migraciones se corren a mano."
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}

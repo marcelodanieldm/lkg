@@ -1,0 +1,26 @@
+{
+  "// Lokigi": "El archivo AGENTS.md de la raíz lo leen el agente de VS Code, Antigravity, Claude Code y Cursor.",
+
+  "chat.useAgentsMdFile": true,
+  "chat.includeApplyingInstructions": true,
+
+  "files.exclude": { "**/node_modules": true, "**/.next": true },
+  "search.exclude": { "**/.next": true, "**/*.zip": true },
+  "files.associations": { "*.instructions.md": "markdown", ".env.example": "dotenv" },
+
+  "editor.formatOnSave": false,
+  "editor.rulers": [100],
+  "editor.tabSize": 2,
+  "[javascript]": { "editor.defaultFormatter": null },
+  "[javascriptreact]": { "editor.defaultFormatter": null },
+  "[sql]": { "editor.tabSize": 2 },
+
+  "javascript.preferences.importModuleSpecifierEnding": "js",
+  "javascript.validate.enable": true,
+
+  "// Sobre los grupos de rutas": "app/(panel) es un grupo de Next: los paréntesis NO aparecen en la URL. Es lo que hace que el informe público no herede la barra del panel.",
+
+  "terminal.integrated.env.linux": { "NODE_NO_WARNINGS": "1" },
+  "terminal.integrated.env.osx": { "NODE_NO_WARNINGS": "1" },
+  "terminal.integrated.env.windows": { "NODE_NO_WARNINGS": "1" }
+}
