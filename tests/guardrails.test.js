@@ -209,6 +209,52 @@ test('el cupo diario difiere el resto de la cola', async () => {
   assert.equal(r.regla, 'cupo_diario');
 });
 
+test('el simulacro difiere por cupo_diario a partir de agotar la cuota en memoria', async () => {
+  reset();
+  const cupo = 3;
+  const ctxSimulado = {
+    supresiones: [],
+    mensajes: [],
+    lead: null,
+    aprobadosHumano: 100,
+    gastoMes: 0,
+    cfg: {
+      modo: 'auto', umbralAuto: 50, cupoEmail: cupo, cupoWhatsapp: 20,
+      desde: 0, hasta: 24, horasMin: 48, maxToques: 4, presupuesto: 40,
+      zona: 'America/Argentina/Buenos_Aires', inicioCalentamiento: '2020-01-01',
+      pausa: false, diasHabiles: [0, 1, 2, 3, 4, 5, 6],
+    },
+  };
+
+  const veredictos = [];
+  for (let i = 1; i <= 6; i++) {
+    const negocio = `Negocio ${i}`;
+    const intento = {
+      ...INTENTO,
+      leadId: `L_${i}`,
+      negocio,
+      destinatario: `lead${i}@ejemplo.com`,
+      cuerpo: `Hola, analicé el perfil de ${negocio} en Google Maps y dio 26 sobre 100. ` +
+              `Lo más relevante: no publica novedades hace más de un mes. El informe completo está en el enlace. ` +
+              `Si preferís no recibir más mensajes, respondé BAJA y no vuelvo a escribir.`,
+    };
+    const r = await evaluar(intento, ctxSimulado);
+    veredictos.push(r);
+    if (r.veredicto === VEREDICTO.PERMITIDO || r.veredicto === VEREDICTO.APROBACION) {
+      ctxSimulado.mensajes.push({
+        id: r.id, lead_id: intento.leadId, direccion: 'saliente', canal: intento.canal,
+        paso: intento.paso, fecha: new Date().toISOString(),
+      });
+    }
+  }
+
+  const permitidos = veredictos.filter(v => v.veredicto === VEREDICTO.PERMITIDO);
+  const diferidosCupo = veredictos.filter(v => v.veredicto === VEREDICTO.DIFERIDO && v.regla === 'cupo_diario');
+
+  assert.equal(permitidos.length, cupo, `deberían haber pasado exactamente ${cupo} envíos`);
+  assert.equal(diferidosCupo.length, 3, 'los últimos 3 envíos deben quedar diferidos por cupo_diario');
+});
+
 test('la rampa de calentamiento arranca en 5 por día', () => {
   const cfg = { cupoEmail: 40, cupoWhatsapp: 20 };
   assert.equal(cupoDelDia('email', { ...cfg, inicioCalentamiento: '' }), 5);

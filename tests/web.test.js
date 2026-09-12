@@ -169,9 +169,22 @@ test('ninguna página del panel importa el cliente de correo', () => {
     'app/(panel)/aprobaciones/acciones.js',
     'app/(panel)/solicitudes/page.jsx',
     'app/(panel)/solicitudes/acciones.js',
+    'app/(panel)/simulacro/page.jsx',
   ];
   for (const p of paginas) {
     assert.ok(!/integrations\/gmail/.test(leer(p)), `${p} importa gmail.js`);
+  }
+});
+
+test('PROPIEDAD CRÍTICA: /simulacro no importa el cliente de correo ni llama a enviar', () => {
+  const archivosSimulacro = recorrer(['app/(panel)/simulacro']);
+  assert.ok(archivosSimulacro.length > 0, 'no se encontró la carpeta /simulacro');
+
+  for (const f of archivosSimulacro) {
+    const texto = readFileSync(f, 'utf8');
+    const codigo = sinComentarios(texto);
+    assert.ok(!/integrations\/gmail/.test(texto), `${relativa(f)} importa gmail.js`);
+    assert.ok(!/\benviar\s*\(/.test(codigo), `${relativa(f)} llama a enviar()`);
   }
 });
 

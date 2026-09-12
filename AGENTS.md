@@ -135,6 +135,7 @@ Places API + sitio web + captura asistida
 - **La raíz es pública.** Si movés el panel de vuelta a `/`, un prospecto que
   entra al dominio ve una pantalla de acceso al CRM en vez de la página que le
   explica quién le escribió. Hay un test que lo impide.
+- **`/simulacro` no envía nada.** La pantalla `/simulacro` evalúa la cola en memoria sin importar `gmail.js` ni llamar a `enviar()`. La cuota diaria se acumula en un estado simulado local para que las filas sobrantes se muestren correctamente como `DIFERIDO`. Un test de `PROPIEDAD CRÍTICA` asegura que la pantalla no importe el cliente de correo.
 
 ## Estilo
 

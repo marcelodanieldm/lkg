@@ -19,6 +19,7 @@ import { auditar } from '../../../../lib/core/audit-engine.js';
 import { generarInformeHTML } from '../../../../lib/core/report.js';
 import { desdePlacesApi, aplicarAnalisisWeb } from '../../../../lib/core/normalize.js';
 import { SECUENCIA_PROSPECCION, render } from '../../../../lib/core/sequences.js';
+import { obtenerSiguientePaso } from '../../../../lib/core/prospeccion.js';
 import { agenteProspector, agenteRedactor, agenteConversador, agenteSupervisor } from '../../../../lib/ia/gemini.js';
 import * as ws from '../../../../lib/integrations/workspace.js';
 import { generarPresupuestos, generarAlternativasReduccion } from '../../../../lib/core/quote-engine.js';
@@ -192,14 +193,12 @@ const TAREAS = {
 
     for (const item of candidatos) {
       try {
-        const salientes = mensajes.filter(m => m.lead_id === item.id && m.direccion === 'saliente');
-        const pasosEnviados = salientes.map(m => Number(m.paso)).filter(p => !isNaN(p) && p > 0);
-        const ultimoPaso = pasosEnviados.length ? Math.max(...pasosEnviados) : 0;
+        const pasoSiguiente = obtenerSiguientePaso(item.id, mensajes);
+        const ultimoPaso = pasoSiguiente - 1;
 
         // El primer paso lo manda prospección; esta tarea se ocupa únicamente de los posteriores.
         if (ultimoPaso === 0) continue;
 
-        const pasoSiguiente = ultimoPaso + 1;
         const pasoDef = SECUENCIA_PROSPECCION.find(p => p.paso === pasoSiguiente);
 
         // Sin paso siguiente la secuencia llegó a su fin y el lead se marca como perdido.
