@@ -17,6 +17,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { extraerEmails } from '../lib/integrations/website-audit.js';
 import { redactarPropuesta, aPeticionesDocs, aGrilla, proponerHorarios } from '../lib/integrations/workspace.js';
@@ -24,8 +25,47 @@ import { auditar } from '../lib/core/audit-engine.js';
 import { generarPresupuestos, generarAlternativasReduccion } from '../lib/core/quote-engine.js';
 import { PERFILES_DEMO } from '../lib/core/demo.js';
 
-const RAIZ = new URL('..', import.meta.url).pathname;
+/**
+ * La raíz del proyecto.
+ *
+ * `fileURLToPath` y no `.pathname`, por una razón que solo se ve en Windows:
+ * ahí `new URL('..', import.meta.url).pathname` devuelve `/D:/Lokig/lokigi/`
+ * —con una barra adelante— y `join()` lo resuelve contra la unidad actual,
+ * produciendo `D:\D:\Lokig\lokigi\...`. Todos los tests que leen un archivo
+ * fallan con ENOENT y el error no dice nada sobre la causa.
+ *
+ * En Linux y macOS las dos formas coinciden, así que el bug solo aparece
+ * cuando alguien clona el proyecto en Windows.
+ */
+const RAIZ = fileURLToPath(new URL('..', import.meta.url));
 const leer = (p) => readFileSync(join(RAIZ, p), 'utf8');
+
+/**
+ * Ruta relativa a la raíz, siempre con barras normales.
+ *
+ * Windows usa `\` y las listas de este archivo están escritas con `/`. Sin
+ * normalizar, una comparación como `permitidas.has(rel)` falla en Windows y
+ * pasa en Linux — el peor tipo de test, el que miente según dónde corre.
+ */
+const relativa = (ruta) => ruta.slice(RAIZ.length).split(/[\\/]/).join('/');
+
+// ═══════════════════════════════════════════════════════════════════════
+// Que el propio andamiaje funcione
+// ═══════════════════════════════════════════════════════════════════════
+
+test('los tests encuentran la raíz del proyecto', () => {
+  // Este test existe por un fallo real: en Windows, `new URL(...).pathname`
+  // devolvía `/D:/…` y veinticuatro tests morían con ENOENT sobre rutas
+  // `D:\D:\…`. El error no decía nada sobre la causa y en Linux no pasaba.
+  //
+  // Va primero a propósito: si la raíz está mal, todo lo que sigue falla por
+  // el mismo motivo y conviene verlo de una.
+  assert.ok(existsSync(join(RAIZ, 'package.json')), `RAIZ no apunta al proyecto: ${RAIZ}`);
+  assert.ok(!/^[\\/][A-Za-z]:/.test(RAIZ),
+    `RAIZ arrastra una barra delante de la unidad de disco: ${RAIZ}`);
+  assert.equal(relativa(join(RAIZ, 'app', 'page.jsx')), 'app/page.jsx',
+    'las rutas relativas no se normalizan a barras normales');
+});
 
 // ═══════════════════════════════════════════════════════════════════════
 // La propiedad crítica: quién puede enviar
@@ -127,7 +167,7 @@ test('solo la landing y el informe de ejemplo se indexan', () => {
   // que ser una que no hable del negocio de un tercero.
   const permitidas = new Set(['app/page.jsx', 'app/informe/ejemplo/page.jsx']);
   for (const archivo of recorrer(['app'])) {
-    const rel = archivo.replace(RAIZ, '').replace(/^\//, '');
+    const rel = relativa(archivo);
     if (!/robots:\s*['"]index/.test(readFileSync(archivo, 'utf8'))) continue;
     assert.ok(permitidas.has(rel), `${rel} se declara indexable y no debería`);
   }
@@ -220,7 +260,7 @@ test('ningún archivo importa un módulo que no existe', () => {
 
     for (const ruta of new Set(rutas)) {
       const destino = join(archivo, '..', ruta);
-      if (!existsSync(destino)) rotos.push(`${archivo.replace(RAIZ, '')} → ${ruta}`);
+      if (!existsSync(destino)) rotos.push(`${relativa(archivo)} → ${ruta}`);
     }
   }
   assert.deepEqual(rotos, [], `importaciones que apuntan a la nada:\n  ${rotos.join('\n  ')}`);
@@ -232,7 +272,7 @@ test('el núcleo no depende de la base ni de las integraciones', () => {
     const texto = sinComentarios(readFileSync(archivo, 'utf8'));
     const malas = [...texto.matchAll(/from\s+['"](\.\.\/(?:db|ia|integrations)\/[^'"]+)['"]/g)].map(m => m[1]);
     assert.deepEqual(malas, [],
-      `${archivo.replace(RAIZ, '')} importa ${malas.join(', ')}: el núcleo recibe datos, no los va a buscar`);
+      `${relativa(archivo)} importa ${malas.join(', ')}: el núcleo recibe datos, no los va a buscar`);
   }
 });
 

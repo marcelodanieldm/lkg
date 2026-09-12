@@ -1,0 +1,16 @@
+# Fin de línea normalizado a LF en el repositorio, siempre.
+#
+# Sin esto, un `git clone` en Windows con autocrlf activado convierte todo a
+# CRLF al sacarlo. Varios tests de este proyecto comparan bloques de texto
+# exactos contra el código fuente —los que se llaman PROPIEDAD CRÍTICA leen
+# route.js y buscan patrones de varias líneas— y con CRLF dejan de coincidir.
+#
+# El síntoma sería el mismo que el del bug de rutas que ya pasó: tests que
+# fallan solo en Windows, con un error que no dice por qué.
+* text=auto eol=lf
+
+# Binarios: que git no los toque.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
