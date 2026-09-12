@@ -13,6 +13,7 @@ import { usePathname } from 'next/navigation';
  */
 const PANTALLAS = [
   ['/panel', 'Panel'],
+  ['/solicitudes', 'Solicitudes'],
   ['/aprobaciones', 'Aprobaciones'],
   ['/leads', 'Leads'],
 ];

@@ -166,6 +166,8 @@ test('ninguna página del panel importa el cliente de correo', () => {
     'app/(panel)/leads/page.jsx',
     'app/(panel)/aprobaciones/page.jsx',
     'app/(panel)/aprobaciones/acciones.js',
+    'app/(panel)/solicitudes/page.jsx',
+    'app/(panel)/solicitudes/acciones.js',
   ];
   for (const p of paginas) {
     assert.ok(!/integrations\/gmail/.test(leer(p)), `${p} importa gmail.js`);
@@ -556,6 +558,52 @@ test('toda migración de SQL es idempotente o está numerada sin huecos', () => 
   archivos.forEach((f, i) => {
     assert.ok(f.startsWith(String(i + 1).padStart(3, '0')), `hueco en las migraciones: ${f}`);
   });
+});
+
+test('todos los exports de lib están enganchados a un flujo o documentados', () => {
+  const archivosLib = recorrer(['lib']);
+  const todosLosArchivos = recorrer(['lib', 'app', 'scripts', 'tests']);
+
+  const contenidos = todosLosArchivos.map(f => ({
+    ruta: f,
+    rel: relativa(f),
+    texto: readFileSync(f, 'utf8'),
+  }));
+
+  const huérfanosSinDocumentar = [];
+
+  for (const f of archivosLib) {
+    const textoLib = readFileSync(f, 'utf8');
+    const matches = [...textoLib.matchAll(/export\s+(?:async\s+)?(?:function|const|let)\s+([A-Za-z0-9_$]+)/g)];
+
+    for (const m of matches) {
+      const nombre = m[1];
+
+      const usadoEnOtro = contenidos.some(c => {
+        if (c.ruta === f) return false;
+        return new RegExp(`\\b${nombre}\\b`).test(c.texto);
+      });
+
+      if (usadoEnOtro) continue;
+
+      const ocurrencias = (textoLib.match(new RegExp(`\\b${nombre}\\b`, 'g')) || []).length;
+      if (ocurrencias > 1) continue;
+
+      const pos = m.index;
+      const previo = textoLib.slice(Math.max(0, pos - 350), pos);
+      const tieneComentario = /\/\*\*[\s\S]*?\*\/|\/\/[^\n]*/.test(previo);
+
+      if (!tieneComentario) {
+        huérfanosSinDocumentar.push(`${relativa(f)}: ${nombre}`);
+      }
+    }
+  }
+
+  assert.deepEqual(
+    huérfanosSinDocumentar,
+    [],
+    `Funciones/constantes exportadas que no se usan ni están documentadas:\n  ${huérfanosSinDocumentar.join('\n  ')}`
+  );
 });
 
 // ─────────────────────────────────────────────────────────────────────

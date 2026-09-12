@@ -62,6 +62,7 @@ El mapa, entonces:
 /baja                baja                pública, noindex
 /acceso              ingreso             pública, noindex
 /panel               panel               PRIVADA
+/solicitudes         solicitudes landing PRIVADA
 /aprobaciones        cola de aprobación  PRIVADA
 /leads               tabla de leads      PRIVADA
 ```
