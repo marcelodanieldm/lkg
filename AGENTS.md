@@ -93,6 +93,7 @@ Places API + sitio web + captura asistida
    devolver algo de lo que dependa el estado del sistema. La única lectura es
    `leerNotas()`, y lo que trae se muestra y nada más. Un test falla si aparece
    otra.
+10. **WhatsApp nunca inicia en frío.** Un WhatsApp a un número obtenido de Google Maps sin consentimiento previo es categoría MARKETING para Meta y es sancionado con el bloqueo del número. WhatsApp se utiliza únicamente cuando el prospecto responde (abriendo la ventana conversacional de 24 hs sin requerir plantillas aprobadas).
 
 ## Trampas conocidas
 

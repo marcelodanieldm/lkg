@@ -104,7 +104,7 @@ Respondeme solo "listo" y esperá la tarea.
 ## P1 · La tarea de seguimiento *(lo más importante que falta)*
 
 El sistema hoy manda el **primer** toque y nada más. `SECUENCIA_PROSPECCION`
-tiene cuatro pasos definidos, `proximo_toque` se calcula y se guarda, la vista
+tiene tres pasos definidos, `proximo_toque` se calcula y se guarda, la vista
 `v_cola_hoy` los junta y el panel los muestra — pero **ninguna tarea programada
 los envía**. Los leads se quedan esperando para siempre.
 
@@ -113,7 +113,7 @@ Falta la tarea de seguimiento y es el agujero más grande del sistema.
 
 Situación actual: `prospeccion` manda el paso 1 y calcula `proximo_toque`. La
 vista `v_cola_hoy` (migración 001) junta los leads cuyo toque venció. Nadie los
-envía nunca. `SECUENCIA_PROSPECCION` en lib/core/sequences.js tiene los cuatro
+envía nunca. `SECUENCIA_PROSPECCION` en lib/core/sequences.js tiene los tres
 pasos con su `diaRelativo` y su plantilla.
 
 Agregá una tarea `seguimiento` en app/api/cron/[tarea]/route.js que:
@@ -187,13 +187,12 @@ Corré `npm test` y `npm run verificar`.
 
 ## P3 · El canal de WhatsApp
 
-Está a medio hacer y se nota: el guardián tiene `cupo_diario_whatsapp`,
-`sequences.js` tiene `PLANTILLAS_META_WHATSAPP`, el esquema acepta
-`canal = 'whatsapp'` — pero no existe el módulo que manda.
+WhatsApp NO se usa en prospección en frío (Meta sanciona mensajes comerciales
+sin consentimiento previo). El canal está reservado únicamente para responder a
+quienes inician conversación o responden un correo dentro de la ventana de 24 hs.
 
 ```
-El canal de WhatsApp está declarado en todo el sistema y no existe el módulo
-que envía. Esto ya está puesto y funcionando:
+El canal de WhatsApp no tiene módulo de envío. Esto ya está puesto y funcionando:
 
 - `guard.js` acepta `canal: 'whatsapp'` y tiene su propio cupo diario.
 - `sequences.js` exporta `PLANTILLAS_META_WHATSAPP`.

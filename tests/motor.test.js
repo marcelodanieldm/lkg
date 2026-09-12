@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { auditar, compararConCompetencia } from '../lib/core/audit-engine.js';
 import { generarPresupuestos, generarAlternativasReduccion, estimarRetorno } from '../lib/core/quote-engine.js';
-import { generarInformeHTML } from '../lib/core/report.js';
-import { detectarObjecion } from '../lib/core/sequences.js';
+import { generarInformeHTML, resumenCorto } from '../lib/core/report.js';
+import { detectarObjecion, SECUENCIA_PROSPECCION, render } from '../lib/core/sequences.js';
 import { PERFILES_DEMO } from '../lib/core/demo.js';
 
 test('el puntaje es determinista', () => {
@@ -111,4 +111,19 @@ test('el retorno estimado se declara como proyección, no como promesa', () => {
   const ret = estimarRetorno(r, p);
   assert.ok(ret.advertencia.includes('no en una promesa'));
   assert.ok(ret.consultasExtraMes > 0);
+});
+
+test('resumenCorto elige un hallazgo evidente para la apertura del correo', () => {
+  const r = auditar(PERFILES_DEMO.panaderia);
+  const res = resumenCorto(r);
+  const h = r.hallazgos.find(x => x.titulo === res.hallazgoTop);
+  assert.ok(h, 'el hallazgo citado existe en los hallazgos');
+  assert.equal(h.evidente, true, 'el hallazgo citado en el correo tiene evidente: true');
+});
+
+test('el asunto del primer paso mide menos de 40 caracteres e incluye el puntaje', () => {
+  const paso1 = SECUENCIA_PROSPECCION.find(p => p.paso === 1);
+  const asunto = render(paso1.asunto, { score: 56, negocio: 'Panadería La Esquina de Oro de Don José S.A.' });
+  assert.ok(asunto.length < 40, `asunto mide ${asunto.length} caracteres: "${asunto}"`);
+  assert.ok(asunto.includes('56/100'), 'el asunto incluye el puntaje');
 });
