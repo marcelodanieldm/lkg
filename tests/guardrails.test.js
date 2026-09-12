@@ -209,15 +209,15 @@ test('el cupo diario difiere el resto de la cola', async () => {
   assert.equal(r.regla, 'cupo_diario');
 });
 
-test('la rampa de calentamiento arranca en 10 por día', () => {
+test('la rampa de calentamiento arranca en 5 por día', () => {
   const cfg = { cupoEmail: 40, cupoWhatsapp: 20 };
-  assert.equal(cupoDelDia('email', { ...cfg, inicioCalentamiento: '' }), 10);
+  assert.equal(cupoDelDia('email', { ...cfg, inicioCalentamiento: '' }), 5);
   const hace = d => new Date(Date.now() - d * 86400000).toISOString();
-  assert.equal(cupoDelDia('email', { ...cfg, inicioCalentamiento: hace(3) }), 10);
-  assert.equal(cupoDelDia('email', { ...cfg, inicioCalentamiento: hace(10) }), 18);
-  assert.equal(cupoDelDia('email', { ...cfg, inicioCalentamiento: hace(17) }), 25);
-  assert.equal(cupoDelDia('email', { ...cfg, inicioCalentamiento: hace(24) }), 35);
-  assert.equal(cupoDelDia('email', { ...cfg, inicioCalentamiento: hace(40) }), 40);
+  assert.equal(cupoDelDia('email', { ...cfg, inicioCalentamiento: hace(3) }), 5);
+  assert.equal(cupoDelDia('email', { ...cfg, inicioCalentamiento: hace(10) }), 10);
+  assert.equal(cupoDelDia('email', { ...cfg, inicioCalentamiento: hace(17) }), 15);
+  assert.equal(cupoDelDia('email', { ...cfg, inicioCalentamiento: hace(24) }), 20);
+  assert.equal(cupoDelDia('email', { ...cfg, inicioCalentamiento: hace(40) }), 25);
 });
 
 // ── Presupuesto y freno de mano ───────────────────────────────────────

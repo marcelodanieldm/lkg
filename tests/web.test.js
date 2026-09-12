@@ -163,6 +163,7 @@ test('ninguna página del panel importa el cliente de correo', () => {
   // clic de más sería un correo de más.
   const paginas = [
     'app/(panel)/panel/page.jsx',
+    'app/(panel)/panel/acciones.js',
     'app/(panel)/leads/page.jsx',
     'app/(panel)/aprobaciones/page.jsx',
     'app/(panel)/aprobaciones/acciones.js',
@@ -172,6 +173,27 @@ test('ninguna página del panel importa el cliente de correo', () => {
   for (const p of paginas) {
     assert.ok(!/integrations\/gmail/.test(leer(p)), `${p} importa gmail.js`);
   }
+});
+
+test('PROPIEDAD CRÍTICA: solo la server action del panel puede reanudar el sistema', () => {
+  // Los agentes y tareas pueden pausar (poner 'TRUE'), pero la reanudación
+  // (poner 'FALSE') es decisión exclusiva de una persona desde el panel.
+  const archivos = recorrer(['app', 'lib', 'scripts']);
+  const infractores = [];
+
+  for (const f of archivos) {
+    const rel = relativa(f);
+    if (rel === 'app/(panel)/panel/acciones.js') continue;
+
+    const t = sinComentarios(readFileSync(f, 'utf8'));
+    if (/guardarConfig\(\s*['"]pausa_general['"]\s*,\s*['"]?(?:false|FALSE)['"]?/i.test(t)) {
+      infractores.push(rel);
+    }
+  }
+
+  assert.deepEqual(infractores, [],
+    `Estos archivos intentan reanudar el sistema (pausa_general = FALSE):\n  ${infractores.join('\n  ')}\n` +
+    'Solo la server action app/(panel)/panel/acciones.js puede reanudar la pausa general.');
 });
 
 // ═══════════════════════════════════════════════════════════════════════

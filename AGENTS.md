@@ -94,6 +94,7 @@ Places API + sitio web + captura asistida
    `leerNotas()`, y lo que trae se muestra y nada más. Un test falla si aparece
    otra.
 10. **WhatsApp nunca inicia en frío.** Un WhatsApp a un número obtenido de Google Maps sin consentimiento previo es categoría MARKETING para Meta y es sancionado con el bloqueo del número. WhatsApp se utiliza únicamente cuando el prospecto responde (abriendo la ventana conversacional de 24 hs sin requerir plantillas aprobadas).
+11. **El Supervisor o un agente puede pausar, solo un humano puede reanudar.** El Supervisor y las tareas pueden activar la `pausa_general` (`TRUE`), pero desactivarla (`FALSE`) es una decisión humana exclusiva realizada desde el panel (`app/(panel)/panel/acciones.js`) con un motivo obligatorio ($\ge 20$ caracteres). Un test de código fuente lo verifica.
 
 ## Trampas conocidas
 

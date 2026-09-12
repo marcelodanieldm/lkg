@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requerirSesion } from '../../lib/auth.js';
 import Nav from './nav.jsx';
+import { pausarSistema } from './panel/acciones.js';
 
 /**
  * El marco del panel privado.
@@ -22,7 +23,12 @@ export default async function LayoutPanel({ children }) {
       <div className="barra">
         <Link href="/panel" className="marca"><Marca /><b>Lokigi</b></Link>
         <Nav />
-        <div className="der">
+        <div className="der" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <form action={pausarSistema} style={{ display: 'inline' }}>
+            <button type="submit" className="bot stop" style={{ padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              PARAR TODO
+            </button>
+          </form>
           {/* Abre la cara pública en otra pestaña: sirve para revisar cómo se
               ve la landing sin perder lo que estabas haciendo acá. */}
           <a href="/" target="_blank" rel="noreferrer" className="salir">Ver el sitio ↗</a>

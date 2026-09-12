@@ -58,7 +58,10 @@ las frases prohibidas que empiezan con acento salían derecho.
 - **Una propuesta ya enviada no cambia de precio.** Si hace falta otro número,
   se crea una propuesta nueva.
 - **El Supervisor puede activar la pausa general, nunca desactivarla.**
-  Reanudar es siempre decisión de una persona.
+  Reanudar es siempre decisión de una persona desde `app/(panel)/panel/acciones.js`
+  con un motivo obligatorio de $\ge 20$ caracteres guardado en `config.nota` y
+  `bitacora`. Un test `PROPIEDAD CRÍTICA` en `tests/web.test.js` verifica que
+  ningún otro archivo del repositorio intente desactivar la pausa general.
 
 ## Al tocar Google Workspace
 

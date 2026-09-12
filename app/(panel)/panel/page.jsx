@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { embudo, pendientesDeAprobacion, colaDeHoy, leer, solicitudesNuevas } from '../../../lib/db/supabase.js';
 import { requerirSesion } from '../../../lib/auth.js';
+import { reanudarSistema } from './acciones.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,10 +45,30 @@ export default async function Panel() {
         <div className="aviso stop">
           <span className="lab">Sistema pausado</span>
           <p>
-            <b>No está saliendo ningún mensaje.</b>{' '}
-            {config.find(c => c.clave === 'pausa_general')?.nota || ''}
+            <b>No está saliendo ningún mensaje.</b>
           </p>
-          <p>Para reanudar, poné <code>pausa_general</code> en FALSE. Antes revisá la Bitácora y resolvé la causa.</p>
+          <div style={{ margin: '8px 0', fontSize: 13, lineHeight: 1.5 }}>
+            <div><b>Activado por:</b> {cfg.pausa_general_autor === 'supervisor' ? 'Supervisor (automático)' : 'Humano (panel)'}</div>
+            <div><b>Fecha:</b> {cfg.pausa_general_fecha ? new Date(cfg.pausa_general_fecha).toLocaleString('es-AR') : '—'}</div>
+            <div><b>Motivo:</b> {cfg.pausa_general_motivo || config.find(c => c.clave === 'pausa_general')?.nota || 'Sin motivo registrado'}</div>
+          </div>
+          <form action={reanudarSistema} style={{ marginTop: 12 }}>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13 }}>
+              Motivo obligatorio para reanudar (mínimo 20 caracteres):
+            </label>
+
+            <textarea
+              name="motivo"
+              rows={3}
+              minLength={20}
+              required
+              placeholder="Explicá la causa del problema y cómo se resolvió antes de reanudar..."
+              style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--ink)' }}
+            />
+            <button type="submit" className="bot" style={{ marginTop: 8, padding: '6px 14px', cursor: 'pointer' }}>
+              Reanudar envíos
+            </button>
+          </form>
         </div>
       )}
 

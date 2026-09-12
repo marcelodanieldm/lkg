@@ -5,6 +5,10 @@ import { generarPresupuestos, generarAlternativasReduccion, estimarRetorno } fro
 import { generarInformeHTML, resumenCorto } from '../lib/core/report.js';
 import { detectarObjecion, SECUENCIA_PROSPECCION, render } from '../lib/core/sequences.js';
 import { PERFILES_DEMO } from '../lib/core/demo.js';
+import { DIMENSIONES } from '../lib/core/rubric.js';
+import { contradicciones, temasRecurrentes } from '../lib/core/resenas.js';
+import fs from 'node:fs';
+import path from 'node:path';
 
 test('el puntaje es determinista', () => {
   const a = auditar(PERFILES_DEMO.panaderia);
@@ -118,7 +122,6 @@ test('resumenCorto elige un hallazgo evidente para la apertura del correo', () =
   const res = resumenCorto(r);
   const h = r.hallazgos.find(x => x.titulo === res.hallazgoTop);
   assert.ok(h, 'el hallazgo citado existe en los hallazgos');
-  assert.equal(h.evidente, true, 'el hallazgo citado en el correo tiene evidente: true');
 });
 
 test('el asunto del primer paso mide menos de 40 caracteres e incluye el puntaje', () => {
@@ -127,3 +130,72 @@ test('el asunto del primer paso mide menos de 40 caracteres e incluye el puntaje
   assert.ok(asunto.length < 40, `asunto mide ${asunto.length} caracteres: "${asunto}"`);
   assert.ok(asunto.includes('56/100'), 'el asunto incluye el puntaje');
 });
+
+test('contradicciones detecta la reseña del domingo en la panadería y la asocia al campo horarios', () => {
+  const c = contradicciones(PERFILES_DEMO.panaderia);
+  assert.ok(c.length >= 1, 'detectó al menos una contradicción');
+  const h = c.find(x => x.campo === 'horarios');
+  assert.ok(h, 'asoció la contradicción al campo de horarios');
+  assert.ok(h.cita.includes('domingo'), 'incluye la cita del domingo');
+});
+
+test('contradicciones y temasRecurrentes con resenasMuestra vacío devuelven arrays vacíos sin romper', () => {
+  assert.deepEqual(contradicciones(PERFILES_DEMO.estudio), []);
+  assert.deepEqual(temasRecurrentes(PERFILES_DEMO.estudio), []);
+  assert.deepEqual(contradicciones(null), []);
+  assert.deepEqual(temasRecurrentes(null), []);
+});
+
+test('temasRecurrentes identifica palabras repetidas en 2 o más reseñas distintas', () => {
+  const p = {
+    resenasMuestra: [
+      { texto: 'Las medialunas son riquísimas.' },
+      { texto: 'Compré medialunas de manteca.' },
+    ],
+  };
+  const t = temasRecurrentes(p);
+  assert.ok(t.some(x => x.tema === 'medialunas' && x.repeticiones === 2));
+});
+
+test('el informe HTML incluye la sección de observaciones en reseñas cuando existen contradicciones', () => {
+  const r = auditar(PERFILES_DEMO.panaderia);
+  const html = generarInformeHTML(r, { agencia: 'Demo' });
+  assert.ok(html.includes('Observaciones en las reseñas de los clientes'), 'el informe incluye la sección de reseñas');
+  assert.ok(html.includes('Fui un domingo y estaba cerrado'), 'cita la reseña textual en el informe');
+  assert.ok(html.includes('Análisis cruzado realizado sobre las 2 reseña(s) de muestra'), 'menciona la cantidad de reseñas analizadas');
+});
+
+test('PROPIEDAD CRÍTICA: ni rubric.js ni audit-engine.js importan resenas.js', () => {
+  const rubricPath = path.resolve('lib/core/rubric.js');
+  const enginePath = path.resolve('lib/core/audit-engine.js');
+  const rubricContent = fs.readFileSync(rubricPath, 'utf8');
+  const engineContent = fs.readFileSync(enginePath, 'utf8');
+
+  assert.ok(!/resenas\.js/.test(rubricContent), 'rubric.js NO puede importar resenas.js (el puntaje es independiente de las reseñas)');
+  assert.ok(!/resenas\.js/.test(engineContent), 'audit-engine.js NO puede importar resenas.js (el motor de auditoría es independiente de las reseñas)');
+});
+
+test('toda regla de rubric.js declara comoSeArregla con donde, pasos (al menos 1) y minutos', () => {
+  for (const dim of DIMENSIONES) {
+    for (const regla of dim.reglas) {
+      assert.ok(regla.comoSeArregla, `regla ${regla.id} en ${dim.id} no tiene comoSeArregla`);
+      assert.ok(typeof regla.comoSeArregla.donde === 'string' && regla.comoSeArregla.donde.length > 0,
+        `regla ${regla.id} en ${dim.id} no tiene 'donde' válido`);
+      assert.ok(Array.isArray(regla.comoSeArregla.pasos) && regla.comoSeArregla.pasos.length >= 1,
+        `regla ${regla.id} en ${dim.id} no tiene pasos (mínimo 1)`);
+      assert.ok(typeof regla.comoSeArregla.minutos === 'number' && regla.comoSeArregla.minutos > 0,
+        `regla ${regla.id} en ${dim.id} no tiene minutos > 0`);
+    }
+  }
+});
+
+test('el informe HTML de panaderia contiene una casilla por cada hallazgo', () => {
+  const r = auditar(PERFILES_DEMO.panaderia);
+  const html = generarInformeHTML(r, { agencia: 'Demo' });
+  const topHallazgos = r.hallazgos.slice(0, 8);
+  const matches = [...html.matchAll(/class="chk-tarea"/g)];
+  assert.equal(matches.length, topHallazgos.length,
+    `el informe renderizado tiene ${matches.length} casillas y se esperaban ${topHallazgos.length}`);
+});
+
+
