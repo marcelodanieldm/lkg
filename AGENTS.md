@@ -6,7 +6,9 @@ Gemini para lo poco que escribe un modelo, Google Workspace como superficie de
 trabajo.
 
 Este archivo lo leen VS Code (`chat.useAgentsMdFile`), Antigravity, Claude Code
-y Cursor. Las reglas específicas de Antigravity están en `.agents/rules/`.
+y Cursor. Las reglas específicas de Antigravity están en `.agents/rules/`, y los
+prompts listos para pegar —con el backlog ordenado por valor— en
+`.agents/PROMPTS.md`.
 
 ## Antes de tocar nada, leé esto
 
@@ -29,7 +31,7 @@ rompe la propiedad central del sistema. Hay tres tests llamados
 
 ```bash
 npm run dev        # desarrollo en localhost:3000 (la landing en /, el panel en /panel)
-npm test           # 75 tests (motor · guardrails · stack web)
+npm test           # 78 tests (motor · guardrails · stack web)
 npm run verificar  # preflight: entorno, base, Google, los 4 casos que bloquean
 npm run auth       # genera el refresh token de Google, una sola vez
 npm run build      # compilar

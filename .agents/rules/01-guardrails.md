@@ -74,7 +74,7 @@ Si querés que algo de la planilla frene un envío: poné el correo en la tabla
 ## Antes de dar por terminado cualquier cambio
 
 ```bash
-npm test          # 69 tests
+npm test          # 78 tests
 npm run verificar # preflight sobre la instalación real
 ```
 

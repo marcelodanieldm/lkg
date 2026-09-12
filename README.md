@@ -195,7 +195,7 @@ todo acá habla del negocio de un tercero que no pidió salir en Google.
 
 ```bash
 npm run dev          # desarrollo
-npm test             # 76 tests
+npm test             # 78 tests
 npm run verificar    # preflight: entorno, base, Google, guardrails
 npm run build        # compilar
 ```
