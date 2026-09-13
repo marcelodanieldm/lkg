@@ -416,3 +416,121 @@ h2.titulo { font-family: Fraunces, Georgia, serif; font-weight: 500; font-size: 
 }
 .cinta-ejemplo b { color: #fff; }
 .cinta-ejemplo a { color: #9cc0ff; margin-left: 6px; }
+
+/* ── Tarjeta de detección visual de negocio ──────────────── */
+
+.tarjeta-deteccion {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 4px 0 16px;
+  font-size: 14px;
+  box-shadow: var(--shadow);
+  transition: all .2s ease;
+}
+
+.tarjeta-deteccion.busqueda {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  background: var(--surface-2);
+}
+
+.tarjeta-deteccion.detectado {
+  border-left: 4px solid var(--accent);
+}
+
+.tarjeta-deteccion.confirmado {
+  border-left: 4px solid var(--go);
+  background: var(--go-soft);
+}
+
+.tarjeta-deteccion .encabezado-det {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.tarjeta-deteccion .badge-det {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.tarjeta-deteccion.confirmado .badge-det {
+  color: var(--go);
+}
+
+.tarjeta-deteccion .cuerpo-det b {
+  display: block;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.tarjeta-deteccion .dir-det {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 2px 0 6px;
+}
+
+.tarjeta-deteccion .meta-det {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+}
+
+.tarjeta-deteccion .rating-det {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.tarjeta-deteccion .cat-det {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11.5px;
+}
+
+.tarjeta-deteccion .pie-det {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tarjeta-deteccion .pie-det span {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.tarjeta-deteccion .boton-confirmar {
+  background: var(--go);
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tarjeta-deteccion .boton-cambiar {
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
