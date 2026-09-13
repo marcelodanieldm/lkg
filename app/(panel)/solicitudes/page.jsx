@@ -68,14 +68,32 @@ export default async function Solicitudes() {
 
           <div className="acciones">
             {!s.nota && (
-              <form action={auditarSolicitud}>
+              <form action={auditarSolicitud} style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginBottom: 12 }}>
                 <input type="hidden" name="id" value={s.id} />
                 <input type="hidden" name="negocio" value={s.negocio} />
                 <input type="hidden" name="ciudad" value={s.ciudad || ''} />
                 <input type="hidden" name="email" value={s.email || ''} />
-                <button className="aprobar" type="submit">
-                  Auditar ahora
-                </button>
+
+                <div style={{ background: 'var(--sub-bg, rgba(255,255,255,0.03))', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--borde, #e5e7eb)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13.5, fontWeight: 500 }}>
+                    <input type="checkbox" name="enviarEmail" defaultChecked style={{ width: 16, height: 16 }} />
+                    Enviar informe por email a <b>{s.email}</b> al terminar de auditar
+                  </label>
+
+                  <textarea
+                    name="mensajePersonalizado"
+                    placeholder="Mensaje personalizado opcional (ej: Hola! Analicé tu perfil y te adjunto la auditoría completa con recomendaciones)..."
+                    rows={2}
+                    className="campo"
+                    style={{ marginTop: 8, width: '100%', fontSize: 13, resize: 'vertical' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="aprobar" type="submit">
+                    Auditar y procesar
+                  </button>
+                </div>
               </form>
             )}
 

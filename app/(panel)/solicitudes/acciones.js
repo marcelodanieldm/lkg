@@ -1,15 +1,17 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { atenderSolicitud, upsert, guardarInforme } from '../../../lib/db/supabase.js';
+import { atenderSolicitud, upsert, guardarInforme, agregar } from '../../../lib/db/supabase.js';
 import { requerirSesion } from '../../../lib/auth.js';
 import { POST as auditarRoute } from '../../api/auditar/route.js';
+import { POST as cronRoute } from '../../api/cron/[tarea]/route.js';
 
 /**
  * Acciones de servidor para la pantalla /solicitudes.
  *
- * Ninguna de estas acciones envía correos directos: solo actualiza el estado
- * de la solicitud en la base de datos o corre la auditoría sin contactar.
+ * Auditar una solicitud calcula el puntaje, genera el informe congelado,
+ * crea el Lead en el CRM y (si se seleccionó el check de envío por correo)
+ * procesa el envío con mensaje personalizado y enlace al informe.
  */
 
 export async function auditarSolicitud(formData) {
@@ -19,6 +21,8 @@ export async function auditarSolicitud(formData) {
   const negocio = formData.get('negocio');
   const ciudad = formData.get('ciudad');
   const email = formData.get('email');
+  const enviarEmail = formData.get('enviarEmail') === 'on' || formData.get('enviarEmail') === 'true';
+  const mensajePersonalizado = (formData.get('mensajePersonalizado') || '').trim();
 
   if (!id) throw new Error('ID de solicitud requerido');
 
@@ -43,6 +47,7 @@ export async function auditarSolicitud(formData) {
     if (res.ok && data.placeId) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
       const informeUrl = `${appUrl}/informe/${data.placeId}`;
+      const debeEnviar = enviarEmail && Boolean(email);
 
       // 1. Guardar el Lead en la tabla leads para que aparezca en /leads
       await upsert('Leads', {
@@ -54,7 +59,7 @@ export async function auditarSolicitud(formData) {
         score: data.score ?? null,
         potencial: data.potencial ?? null,
         percentil: data.percentil?.percentil ?? (typeof data.percentil === 'number' ? data.percentil : null),
-        etapa: 'auditado',
+        etapa: debeEnviar ? 'contactado' : 'auditado',
         informe_url: informeUrl,
         actualizado_en: new Date().toISOString(),
       }).catch(() => {});
@@ -64,9 +69,42 @@ export async function auditarSolicitud(formData) {
         await guardarInforme(data.placeId, data.informeHTML, data.score, data.version || 'v1.0').catch(() => {});
       }
 
-      // 3. Marcar la solicitud como atendida enlazada con su lead_id
-      await atenderSolicitud(id, 'auditada', null, data.placeId).catch(async () => {
-        await atenderSolicitud(id, 'auditada', `Place ID: ${data.placeId}`);
+      // 3. Si se solicita envío por mail, redactar y enviar por el circuito supervisado
+      let notaFinal = null;
+      if (debeEnviar) {
+        const intro = mensajePersonalizado
+          ? `${mensajePersonalizado}\n\n`
+          : `Hola,\n\nYa está lista la auditoría de ${negocio}.\n\nTu puntaje obtenido fue de ${data.score}/100 (con un potencial estimado de ${data.potencial}/100).\n\n`;
+        const cuerpoFinal = `${intro}Podés consultar el informe completo en el siguiente enlace:\n${informeUrl}\n\nSi preferís no recibir más mensajes, respondé BAJA.`;
+
+        await agregar('Aprobaciones', {
+          lead_id: data.placeId,
+          negocio,
+          canal: 'email',
+          paso: 1,
+          destinatario: email,
+          asunto: `Lokigi · Auditoría de tu perfil de Google Maps (${negocio})`,
+          cuerpo: cuerpoFinal,
+          decision: 'APROBADO',
+          decidido_en: new Date().toISOString(),
+          motivo: 'Solicitud auditada desde el panel con envío por email activado',
+        }).catch(() => {});
+
+        // Disparar la ejecución de aprobaciones para pasar por el guardián y enviar por Gmail
+        const cronReq = new Request('http://localhost/api/cron/aprobaciones', {
+          method: 'POST',
+          headers: {
+            ...(process.env.LOKIGI_API_KEY ? { 'x-api-key': process.env.LOKIGI_API_KEY } : {}),
+          },
+        });
+        await cronRoute(cronReq, { params: Promise.resolve({ tarea: 'aprobaciones' }) }).catch(() => {});
+
+        notaFinal = `Auditada y enviada a ${email}`;
+      }
+
+      // 4. Marcar la solicitud como atendida enlazada con su lead_id
+      await atenderSolicitud(id, 'auditada', notaFinal, data.placeId).catch(async () => {
+        await atenderSolicitud(id, 'auditada', notaFinal || `Place ID: ${data.placeId}`);
       });
     } else {
       console.error(`Error auditando "${negocio}":`, data.error);
@@ -79,6 +117,7 @@ export async function auditarSolicitud(formData) {
 
   revalidatePath('/solicitudes');
   revalidatePath('/leads');
+  revalidatePath('/aprobaciones');
   revalidatePath('/panel');
 }
 
