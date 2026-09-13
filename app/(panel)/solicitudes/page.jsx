@@ -72,6 +72,7 @@ export default async function Solicitudes() {
                 <input type="hidden" name="id" value={s.id} />
                 <input type="hidden" name="negocio" value={s.negocio} />
                 <input type="hidden" name="ciudad" value={s.ciudad || ''} />
+                <input type="hidden" name="email" value={s.email || ''} />
                 <button className="aprobar" type="submit">
                   Auditar ahora
                 </button>

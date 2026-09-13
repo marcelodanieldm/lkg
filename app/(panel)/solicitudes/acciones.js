@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { atenderSolicitud } from '../../../lib/db/supabase.js';
+import { atenderSolicitud, upsert, guardarInforme } from '../../../lib/db/supabase.js';
 import { requerirSesion } from '../../../lib/auth.js';
 import { POST as auditarRoute } from '../../api/auditar/route.js';
 
@@ -18,14 +18,10 @@ export async function auditarSolicitud(formData) {
   const id = formData.get('id');
   const negocio = formData.get('negocio');
   const ciudad = formData.get('ciudad');
+  const email = formData.get('email');
 
   if (!id) throw new Error('ID de solicitud requerido');
 
-  // El manejador `auditarRoute` se invoca en memoria a propósito: evita una
-  // vuelta HTTP contra la propia app y reutiliza toda la orquestación de
-  // Places + normalize + auditar + Corpus. Al ser una invocación en memoria,
-  // el tiempo límite de Vercel en producción lo dicta la página de origen;
-  // por eso `app/(panel)/solicitudes/page.jsx` declara `maxDuration = 60`.
   const req = new Request('http://localhost/api/auditar', {
     method: 'POST',
     headers: {
@@ -35,6 +31,8 @@ export async function auditarSolicitud(formData) {
     body: JSON.stringify({
       consulta: ciudad ? `${negocio}, ${ciudad}` : negocio,
       guardar: true,
+      conInforme: true,
+      conPresupuesto: true,
     }),
   });
 
@@ -43,7 +41,33 @@ export async function auditarSolicitud(formData) {
     const data = await res.json().catch(() => ({}));
 
     if (res.ok && data.placeId) {
-      await atenderSolicitud(id, 'auditada', `Place ID: ${data.placeId}`);
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+      const informeUrl = `${appUrl}/informe/${data.placeId}`;
+
+      // 1. Guardar el Lead en la tabla leads para que aparezca en /leads
+      await upsert('Leads', {
+        id: data.placeId,
+        negocio: data.negocio || negocio,
+        categoria: data.categoria || null,
+        ciudad: data.ciudad || ciudad || null,
+        email: email || null,
+        score: data.score ?? null,
+        potencial: data.potencial ?? null,
+        percentil: data.percentil?.percentil ?? (typeof data.percentil === 'number' ? data.percentil : null),
+        etapa: 'auditado',
+        informe_url: informeUrl,
+        actualizado_en: new Date().toISOString(),
+      }).catch(() => {});
+
+      // 2. Congelar y guardar el informe HTML en la tabla informes para /informe/[id]
+      if (data.informeHTML) {
+        await guardarInforme(data.placeId, data.informeHTML, data.score, data.version || 'v1.0').catch(() => {});
+      }
+
+      // 3. Marcar la solicitud como atendida enlazada con su lead_id
+      await atenderSolicitud(id, 'auditada', null, data.placeId).catch(async () => {
+        await atenderSolicitud(id, 'auditada', `Place ID: ${data.placeId}`);
+      });
     } else {
       console.error(`Error auditando "${negocio}":`, data.error);
       await atenderSolicitud(id, 'auditada', `Error: ${data.error || 'No se pudo auditar'}`);
@@ -54,6 +78,7 @@ export async function auditarSolicitud(formData) {
   }
 
   revalidatePath('/solicitudes');
+  revalidatePath('/leads');
   revalidatePath('/panel');
 }
 
