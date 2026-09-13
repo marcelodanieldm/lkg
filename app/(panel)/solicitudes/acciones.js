@@ -38,13 +38,19 @@ export async function auditarSolicitud(formData) {
     }),
   });
 
-  const res = await auditarRoute(req);
-  const data = await res.json().catch(() => ({}));
+  try {
+    const res = await auditarRoute(req);
+    const data = await res.json().catch(() => ({}));
 
-  if (res.ok && data.placeId) {
-    await atenderSolicitud(id, 'auditada', null, data.placeId);
-  } else {
-    throw new Error(data.error || `No se pudo auditar "${negocio}"`);
+    if (res.ok && data.placeId) {
+      await atenderSolicitud(id, 'auditada', `Place ID: ${data.placeId}`);
+    } else {
+      console.error(`Error auditando "${negocio}":`, data.error);
+      await atenderSolicitud(id, 'auditada', `Error: ${data.error || 'No se pudo auditar'}`);
+    }
+  } catch (err) {
+    console.error(`Excepción en auditarSolicitud "${negocio}":`, err);
+    await atenderSolicitud(id, 'auditada', `Excepción: ${err.message}`).catch(() => {});
   }
 
   revalidatePath('/solicitudes');
