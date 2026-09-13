@@ -63,14 +63,60 @@ export async function POST(req) {
   }
 
   if (!perfil) {
-    const { PERFILES_DEMO } = await import('../../../lib/core/demo.js');
-    const base = PERFILES_DEMO.panaderia;
+    const queryStr = String(consulta || placeId || 'Comercio Local').trim();
+    const partes = queryStr.split(',').map(s => s.trim());
+    const nombre = partes[0] || queryStr;
+    const direccion = queryStr.includes(',') ? queryStr : `${queryStr}, Argentina`;
+
+    let catLabel = 'Comercio / Servicio Local';
+    let catId = 'local_business';
+    const t = queryStr.toLowerCase();
+
+    if (t.includes('panad') || t.includes('bakery')) { catId = 'bakery'; catLabel = 'Panadería'; }
+    else if (t.includes('farmac') || t.includes('botic')) { catId = 'pharmacy'; catLabel = 'Farmacia'; }
+    else if (t.includes('odont') || t.includes('dental')) { catId = 'dentist'; catLabel = 'Odontólogo'; }
+    else if (t.includes('contab') || t.includes('estudio')) { catId = 'accounting'; catLabel = 'Estudio Contable'; }
+    else if (t.includes('abogad') || t.includes('jurid')) { catId = 'lawyer'; catLabel = 'Estudio Jurídico'; }
+    else if (t.includes('taller') || t.includes('mecanic')) { catId = 'car_repair'; catLabel = 'Taller Mecánico'; }
+    else if (t.includes('pizz') || t.includes('restauran') || t.includes('bar')) { catId = 'restaurant'; catLabel = 'Restaurante'; }
+    else if (t.includes('peluquer') || t.includes('barber')) { catId = 'beauty_salon'; catLabel = 'Peluquería'; }
+    else if (t.includes('gimnas') || t.includes('fit')) { catId = 'gym'; catLabel = 'Gimnasio'; }
+    else if (t.includes('veterin')) { catId = 'veterinary_care'; catLabel = 'Veterinaria'; }
+    else if (t.includes('inmobil')) { catId = 'real_estate_agency'; catLabel = 'Inmobiliaria'; }
+
     const cleanId = placeId ? String(placeId).replace(/^demo_/, '') : `inf_${Date.now()}`;
+
     perfil = {
-      ...base,
-      placeId: cleanId || `inf_${Date.now()}`,
-      nombre: consulta || base.nombre,
-      direccion: consulta ? `${consulta}, Argentina` : base.direccion,
+      fuente: 'asistido',
+      placeId: cleanId,
+      nombre,
+      direccion,
+      telefono: null,
+      sitioWeb: null,
+      mapsUrl: null,
+      estado: 'OPERATIONAL',
+      categoriaPrimaria: catId,
+      categoriaPrimariaLabel: catLabel,
+      categoriasSecundarias: [],
+      descripcion: '',
+      rating: null,
+      cantidadResenas: 0,
+      tasaRespuestaResenas: null,
+      diasDesdeUltimaResena: null,
+      cantidadFotos: 0,
+      horarios: [{ dia: 1 }, { dia: 2 }, { dia: 3 }, { dia: 4 }, { dia: 5 }],
+      horariosEspeciales: [],
+      atributos: [],
+      servicios: [],
+      postsUltimos30Dias: null,
+      ofertasActivas: null,
+      mensajeriaActiva: null,
+      reservasActivas: null,
+      diasDesdeUltimaFoto: null,
+      tiposDeFoto: { fachada: false, interior: false, producto: false, equipo: false },
+      redes: {},
+      web: null,
+      resenasMuestra: [],
     };
   }
 

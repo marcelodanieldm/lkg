@@ -160,6 +160,7 @@ export async function buscarNegocioWeb({ negocio, direccion, ciudad, pais = 'Arg
   }
 
   const queryEmbed = encodeURIComponent(consulta);
+  const catInferida = inferirCategoriaTexto(qNegocio);
   return {
     ok: true,
     fuente: 'asistido',
@@ -168,9 +169,9 @@ export async function buscarNegocioWeb({ negocio, direccion, ciudad, pais = 'Arg
         id: `asistido-${Date.now()}`,
         nombre: qNegocio,
         direccion: [qDireccion, qCiudad, qPais].filter(Boolean).join(', ') || `${qNegocio}, Argentina`,
-        categoria: 'Negocio / Servicio',
-        rating: 4.8,
-        resenas: 18,
+        categoria: catInferida,
+        rating: null,
+        resenas: null,
         mapsUrl: null,
         lat: -31.4135,
         lng: -64.1810,
@@ -178,4 +179,22 @@ export async function buscarNegocioWeb({ negocio, direccion, ciudad, pais = 'Arg
       },
     ],
   };
+}
+
+function inferirCategoriaTexto(texto) {
+  const t = String(texto || '').toLowerCase();
+  if (t.includes('panad') || t.includes('bakery') || t.includes('factura')) return 'Panadería / Confitería';
+  if (t.includes('farmac') || t.includes('botic')) return 'Farmacia';
+  if (t.includes('odont') || t.includes('dental') || t.includes('denta')) return 'Odontólogo / Clínica Dental';
+  if (t.includes('contab') || t.includes('estudio contable') || t.includes('contador')) return 'Estudio Contable';
+  if (t.includes('abogad') || t.includes('jurid') || t.includes('estudio juridico')) return 'Estudio Jurídico';
+  if (t.includes('taller') || t.includes('mecanic') || t.includes('auto')) return 'Taller Mecánico';
+  if (t.includes('pizz') || t.includes('restauran') || t.includes('bar') || t.includes('cafeter')) return 'Gastronomía / Restaurante';
+  if (t.includes('peluquer') || t.includes('barber') || t.includes('estetic')) return 'Peluquería / Estética';
+  if (t.includes('gimnas') || t.includes('crossfit') || t.includes('fit')) return 'Gimnasio';
+  if (t.includes('veterin') || t.includes('pet')) return 'Veterinaria';
+  if (t.includes('inmobil') || t.includes('propied')) return 'Inmobiliaria';
+  if (t.includes('hotel') || t.includes('hosped')) return 'Hotel / Alojamiento';
+  if (t.includes('clinica') || t.includes('medic') || t.includes('consultor')) return 'Centro Médico / Salud';
+  return 'Comercio / Servicio Local';
 }
