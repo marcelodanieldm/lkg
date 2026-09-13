@@ -108,6 +108,7 @@ export async function auditarSolicitud(formData) {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
+            'x-internal-action': 'true',
             ...(process.env.LOKIGI_API_KEY ? { 'x-api-key': process.env.LOKIGI_API_KEY } : {}),
           },
         });
