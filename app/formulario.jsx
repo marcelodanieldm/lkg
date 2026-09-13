@@ -18,9 +18,10 @@ export default function Formulario() {
 
   // Detección automática con debounce cuando el usuario ingresa o modifica los datos del negocio/ubicación
   useEffect(() => {
+    if (confirmado) return;
+
     if (negocio.trim().length < 3) {
       setHallado(null);
-      setConfirmado(false);
       return;
     }
 
@@ -30,7 +31,6 @@ export default function Formulario() {
         const res = await buscarNegocioWeb({ negocio, direccion, ciudad, pais });
         if (res.ok && res.resultados.length > 0) {
           setHallado(res.resultados[0]);
-          setConfirmado(false);
         } else {
           setHallado(null);
         }
@@ -42,7 +42,7 @@ export default function Formulario() {
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [negocio, direccion, ciudad, pais]);
+  }, [negocio, direccion, ciudad, pais, confirmado]);
 
   if (estado?.estado === 'listo') {
     return (
@@ -51,6 +51,7 @@ export default function Formulario() {
           <b>Anotado.</b>
           <p>
             Te mando la auditoría en un par de días hábiles, en un solo correo.
+            Revisá la carpeta de spam o correo no deseado por las dudas.
             Si mientras tanto querés preguntarme algo, respondeme ese mismo mensaje.
           </p>
         </div>

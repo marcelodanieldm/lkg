@@ -5,13 +5,14 @@ import { atenderSolicitud, upsert, guardarInforme, agregar } from '../../../lib/
 import { requerirSesion } from '../../../lib/auth.js';
 import { POST as auditarRoute } from '../../api/auditar/route.js';
 import { POST as cronRoute } from '../../api/cron/[tarea]/route.js';
+import { agenteSugeridorMensaje } from '../../../lib/ia/gemini.js';
 
 /**
  * Acciones de servidor para la pantalla /solicitudes.
  *
  * Auditar una solicitud calcula el puntaje, genera el informe congelado,
  * crea el Lead en el CRM y (si se seleccionó el check de envío por correo)
- * procesa el envío con mensaje personalizado y enlace al informe.
+ * procesa el envío con mensaje personalizado o sugerido por IA y enlace al informe.
  */
 
 export async function auditarSolicitud(formData) {
@@ -45,7 +46,7 @@ export async function auditarSolicitud(formData) {
     const data = await res.json().catch(() => ({}));
 
     if (res.ok && data.placeId) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://lokigi.vercel.app').replace(/\/$/, '');
       const informeUrl = `${appUrl}/informe/${data.placeId}`;
       const debeEnviar = enviarEmail && Boolean(email);
 
@@ -69,13 +70,25 @@ export async function auditarSolicitud(formData) {
         await guardarInforme(data.placeId, data.informeHTML, data.score, data.version || 'v1.0').catch(() => {});
       }
 
-      // 3. Si se solicita envío por mail, redactar y enviar por el circuito supervisado
+      // 3. Si se solicita envío por mail, generar sugerencia de IA (si no hay manual) y enviar
       let notaFinal = null;
       if (debeEnviar) {
-        const intro = mensajePersonalizado
-          ? `${mensajePersonalizado}\n\n`
+        let sugerido = mensajePersonalizado;
+        if (!sugerido) {
+          sugerido = await agenteSugeridorMensaje({
+            negocio: data.negocio || negocio,
+            score: data.score,
+            potencial: data.potencial,
+            hallazgos: data.hallazgos,
+            categoria: data.categoria,
+            ciudad: data.ciudad || ciudad,
+          }).catch(() => null);
+        }
+
+        const intro = sugerido
+          ? `${sugerido}\n\n`
           : `Hola,\n\nYa está lista la auditoría de ${negocio}.\n\nTu puntaje obtenido fue de ${data.score}/100 (con un potencial estimado de ${data.potencial}/100).\n\n`;
-        const cuerpoFinal = `${intro}Podés consultar el informe completo en el siguiente enlace:\n${informeUrl}\n\nSi preferís no recibir más mensajes, respondé BAJA.`;
+        const cuerpoFinal = `${intro}Analizamos el perfil de Google Maps de ${negocio} y preparamos un informe detallado con hallazgos y recomendaciones.\n\nPodés consultar el informe completo en el siguiente enlace:\n${informeUrl}\n\nSi preferís no recibir más mensajes, respondé BAJA.`;
 
         await agregar('Aprobaciones', {
           lead_id: data.placeId,
