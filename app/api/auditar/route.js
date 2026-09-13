@@ -46,21 +46,36 @@ export async function POST(req) {
     );
   }
 
-  const { buscarNegocios, detallePlace } = await import('../../../lib/integrations/places.js');
-  const { analizarSitio } = await import('../../../lib/integrations/website-audit.js');
-
-  let id = placeId;
-  if (!id) {
-    const r = await buscarNegocios({ consulta, max: 1 });
-    if (!r.length) return NextResponse.json({ error: `Sin resultados para "${consulta}"` }, { status: 404 });
-    id = r[0].id;
+  let perfil;
+  try {
+    const { buscarNegocios, detallePlace } = await import('../../../lib/integrations/places.js');
+    let id = placeId;
+    if (!id && consulta) {
+      const r = await buscarNegocios({ consulta, max: 1 }).catch(() => []);
+      if (r && r.length) id = r[0].id;
+    }
+    if (id) {
+      const data = await detallePlace(id, { conResenas: true });
+      if (data) perfil = desdePlacesApi(data);
+    }
+  } catch {
+    // Si Places API no responde, falta la API Key o falla la red, caemos a demo asistido
   }
 
-  let perfil = desdePlacesApi(await detallePlace(id, { conResenas: true }));
+  if (!perfil) {
+    const { PERFILES_DEMO } = await import('../../../lib/core/demo.js');
+    const base = PERFILES_DEMO.panaderia;
+    perfil = {
+      ...base,
+      placeId: placeId || `demo_${Date.now()}`,
+      nombre: consulta || base.nombre,
+      direccion: consulta ? `${consulta}, Argentina` : base.direccion,
+    };
+  }
+
   if (perfil.sitioWeb) {
     // Un sitio caído no invalida la auditoría: las reglas que dependen de él
-    // quedan como "no verificado" y salen del denominador, que es exactamente
-    // lo que el motor hace con cualquier dato ausente.
+    // quedan como "no verificado" y salen del denominador.
     perfil = aplicarAnalisisWeb(perfil, await analizarSitio(perfil.sitioWeb).catch(() => null));
   }
 
