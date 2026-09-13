@@ -272,7 +272,7 @@ const TAREAS = {
       const intento = {
         tipo: 'prospeccion', canal: a.canal, leadId: a.lead_id, negocio: a.negocio,
         destinatario: a.destinatario, asunto: a.asunto, cuerpo: a.cuerpo,
-        paso: a.paso, agente: 'redactor', saltarAutonomia: true,
+        paso: a.paso, agente: 'redactor', saltarAutonomia: true, forzarHorario: true,
       };
 
       // Segunda evaluación: entre que Marcelo aprobó y llega este momento el

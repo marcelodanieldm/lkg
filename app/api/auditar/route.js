@@ -65,9 +65,10 @@ export async function POST(req) {
   if (!perfil) {
     const { PERFILES_DEMO } = await import('../../../lib/core/demo.js');
     const base = PERFILES_DEMO.panaderia;
+    const cleanId = placeId ? String(placeId).replace(/^demo_/, '') : `inf_${Date.now()}`;
     perfil = {
       ...base,
-      placeId: placeId || `demo_${Date.now()}`,
+      placeId: cleanId || `inf_${Date.now()}`,
       nombre: consulta || base.nombre,
       direccion: consulta ? `${consulta}, Argentina` : base.direccion,
     };

@@ -94,10 +94,18 @@ export async function auditarSolicitud(formData) {
         const cronReq = new Request('http://localhost/api/cron/aprobaciones', {
           method: 'POST',
           headers: {
+            'content-type': 'application/json',
             ...(process.env.LOKIGI_API_KEY ? { 'x-api-key': process.env.LOKIGI_API_KEY } : {}),
           },
         });
-        await cronRoute(cronReq, { params: Promise.resolve({ tarea: 'aprobaciones' }) }).catch(() => {});
+        const cRes = await cronRoute(cronReq, { params: Promise.resolve({ tarea: 'aprobaciones' }) }).catch((e) => {
+          console.error('Error al disparar cron aprobaciones:', e);
+          return null;
+        });
+        if (cRes) {
+          const cData = await cRes.json().catch(() => ({}));
+          console.log('Resultado envío aprobaciones:', cData);
+        }
 
         notaFinal = `Auditada y enviada a ${email}`;
       }
