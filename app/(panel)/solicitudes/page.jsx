@@ -15,7 +15,8 @@ export const maxDuration = 60;
  */
 export default async function Solicitudes() {
   await requerirSesion();
-  const solicitudes = await solicitudesNuevas().catch(() => []);
+  const resSol = await solicitudesNuevas().catch(() => []);
+  const solicitudes = Array.isArray(resSol) ? resSol : [];
 
   if (!solicitudes.length) {
     return (

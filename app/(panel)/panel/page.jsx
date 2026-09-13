@@ -18,16 +18,25 @@ const tono = (s) => s == null ? 's-nd'
 export default async function Panel() {
   await requerirSesion();
 
-  const [{ embudo: emb, mrr }, pendientes, cola, config, metricas, solicitudes] = await Promise.all([
-    embudo(), pendientesDeAprobacion(), colaDeHoy(12), leer('Config'), leer('Metricas'),
-    // La tabla de solicitudes es de la migración 004. Si todavía no la
-    // corriste, el panel se dibuja igual sin esa sección.
+  const [{ embudo: emb, mrr }, pendientesRaw, colaRaw, configRaw, metricasRaw, solicitudesRaw] = await Promise.all([
+    embudo().catch(() => ({ embudo: [], mrr: null })),
+    pendientesDeAprobacion().catch(() => []),
+    colaDeHoy(12).catch(() => []),
+    leer('Config').catch(() => []),
+    leer('Metricas').catch(() => []),
     solicitudesNuevas().catch(() => []),
   ]);
 
+  const config = Array.isArray(configRaw) ? configRaw : [];
+  const metricas = Array.isArray(metricasRaw) ? metricasRaw : [];
+  const pendientes = Array.isArray(pendientesRaw) ? pendientesRaw : [];
+  const cola = Array.isArray(colaRaw) ? colaRaw : [];
+  const solicitudes = Array.isArray(solicitudesRaw) ? solicitudesRaw : [];
+  const embList = Array.isArray(emb) ? emb : [];
+
   const cfg = Object.fromEntries(config.map(c => [c.clave, c.valor]));
-  const porEtapa = Object.fromEntries(emb.map(e => [e.etapa, Number(e.cantidad)]));
-  const total = emb.reduce((a, e) => a + Number(e.cantidad), 0);
+  const porEtapa = Object.fromEntries(embList.map(e => [e.etapa, Number(e.cantidad)]));
+  const total = embList.reduce((a, e) => a + Number(e.cantidad), 0);
   const hoy = new Date().toISOString().slice(0, 10);
   const m = metricas.find(x => x.fecha === hoy);
   const viejas = pendientes.filter(p => Date.now() - new Date(p.creado_en).getTime() > 24 * 3600e3);
