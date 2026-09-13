@@ -17,10 +17,14 @@ create extension if not exists pgcrypto;
 -- Núcleo del embudo
 -- ─────────────────────────────────────────────────────────────────────
 
-create type etapa_lead as enum (
-  'nuevo','auditado','contactado','respondio','interesado',
-  'presupuestado','negociando','ganado','perdido','baja'
-);
+do $$ begin
+  create type etapa_lead as enum (
+    'nuevo','auditado','contactado','respondio','interesado',
+    'presupuestado','negociando','ganado','perdido','baja'
+  );
+exception
+  when duplicate_object then null;
+end $$;
 
 create table leads (
   id              text primary key,              -- place_id de Google
