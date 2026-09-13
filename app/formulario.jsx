@@ -9,12 +9,14 @@ import { pedirAuditoriaWeb, buscarNegocioWeb } from './solicitar.js';
 export default function Formulario() {
   const [estado, accion, enviando] = useActionState(pedirAuditoriaWeb, { estado: 'inicial' });
   const [negocio, setNegocio] = useState('');
+  const [direccion, setDireccion] = useState('');
   const [ciudad, setCiudad] = useState('');
+  const [pais, setPais] = useState('Argentina');
   const [buscando, setBuscando] = useState(false);
   const [hallado, setHallado] = useState(null);
   const [confirmado, setConfirmado] = useState(false);
 
-  // Detección automática con debounce cuando el usuario ingresa el nombre del negocio
+  // Detección automática con debounce cuando el usuario ingresa o modifica los datos del negocio/ubicación
   useEffect(() => {
     if (negocio.trim().length < 3) {
       setHallado(null);
@@ -25,7 +27,7 @@ export default function Formulario() {
     const timer = setTimeout(async () => {
       setBuscando(true);
       try {
-        const res = await buscarNegocioWeb({ negocio, ciudad });
+        const res = await buscarNegocioWeb({ negocio, direccion, ciudad, pais });
         if (res.ok && res.resultados.length > 0) {
           setHallado(res.resultados[0]);
           setConfirmado(false);
@@ -40,7 +42,7 @@ export default function Formulario() {
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [negocio, ciudad]);
+  }, [negocio, direccion, ciudad, pais]);
 
   if (estado?.estado === 'listo') {
     return (
@@ -58,7 +60,7 @@ export default function Formulario() {
 
   return (
     <form className="formulario" action={accion}>
-      <label htmlFor="negocio">Tu negocio o servicio</label>
+      <label htmlFor="negocio">Nombre del negocio o servicio</label>
       <input
         id="negocio"
         name="negocio"
@@ -71,19 +73,48 @@ export default function Formulario() {
         autoComplete="organization"
       />
 
-      <label htmlFor="ciudad">Ciudad</label>
+      <label htmlFor="direccion">Dirección</label>
       <input
-        id="ciudad"
-        name="ciudad"
+        id="direccion"
+        name="direccion"
         type="text"
-        maxLength={80}
-        value={ciudad}
-        onChange={(e) => setCiudad(e.target.value)}
-        placeholder="Rosario"
-        autoComplete="address-level2"
+        maxLength={160}
+        value={direccion}
+        onChange={(e) => setDireccion(e.target.value)}
+        placeholder="Av. Colón 1450"
+        autoComplete="street-address"
       />
 
-      {/* UX visual de detección de ubicación / negocio */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div>
+          <label htmlFor="ciudad">Ciudad</label>
+          <input
+            id="ciudad"
+            name="ciudad"
+            type="text"
+            maxLength={80}
+            value={ciudad}
+            onChange={(e) => setCiudad(e.target.value)}
+            placeholder="Rosario"
+            autoComplete="address-level2"
+          />
+        </div>
+        <div>
+          <label htmlFor="pais">País</label>
+          <input
+            id="pais"
+            name="pais"
+            type="text"
+            maxLength={80}
+            value={pais}
+            onChange={(e) => setPais(e.target.value)}
+            placeholder="Argentina"
+            autoComplete="country-name"
+          />
+        </div>
+      </div>
+
+      {/* UX visual de detección de ubicación / negocio con Mapa a 200m */}
       {buscando && (
         <div className="tarjeta-deteccion busqueda">
           <span className="indicador-spin">📍</span>
@@ -95,7 +126,7 @@ export default function Formulario() {
         <div className={`tarjeta-deteccion ${confirmado ? 'confirmado' : 'detectado'}`}>
           <div className="encabezado-det">
             <span className="badge-det">
-              {confirmado ? '✓ Negocio verificado' : '📍 Ubicación detectada en Google Maps'}
+              {confirmado ? '✓ Ubicación y negocio confirmados' : '📍 Ubicación detectada en Google Maps'}
             </span>
             {confirmado && (
               <button
@@ -107,6 +138,7 @@ export default function Formulario() {
               </button>
             )}
           </div>
+
           <div className="cuerpo-det">
             <b>{hallado.nombre}</b>
             <p className="dir-det">{hallado.direccion}</p>
@@ -119,15 +151,31 @@ export default function Formulario() {
               <span className="cat-det">{hallado.categoria}</span>
             </div>
           </div>
+
+          {/* Mapa embebido de Google Maps con radio de 200 metros a la redonda (zoom 17) */}
+          <div className="mapa-200m-wrap">
+            <div className="mapa-200m-header">
+              <span>📍 Google Maps — Ubicación (200m a la redonda)</span>
+              <span className="badge-zoom">Radio 200m</span>
+            </div>
+            <iframe
+              title="Mapa de la ubicación en 200 metros a la redonda"
+              src={hallado.mapEmbedUrl}
+              className="iframe-mapa-200m"
+              loading="lazy"
+              allowFullScreen
+            ></iframe>
+          </div>
+
           {!confirmado && (
             <div className="pie-det">
-              <span>¿Es esta la ubicación de tu negocio?</span>
+              <span>¿Es esta la ubicación correcta de tu negocio?</span>
               <button
                 type="button"
                 className="boton-confirmar"
                 onClick={() => setConfirmado(true)}
               >
-                ✓ Sí, confirmar negocio
+                ✓ Sí, es mi negocio y ubicación
               </button>
             </div>
           )}

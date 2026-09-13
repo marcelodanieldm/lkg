@@ -45,3 +45,5 @@ Thumbs.db
 # Temporary files & caches
 .eslintcache
 .cache
+
+.vercel

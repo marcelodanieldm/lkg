@@ -1,12 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-
-  "//": "El cron de Vercel en el plan Hobby corre UNA VEZ POR DÍA con ±59 min de imprecisión. Por eso la programación real vive en pg_cron dentro de Supabase (ver supabase/migrations/002). Este cron queda como red de seguridad: si pg_cron se cae, el supervisor igual corre una vez al día y avisa.",
-
   "crons": [
     { "path": "/api/cron/supervisor", "schedule": "0 22 * * *" }
   ],
-
   "functions": {
     "app/api/cron/[tarea]/route.js": { "maxDuration": 300 },
     "app/api/auditar/route.js": { "maxDuration": 60 },
@@ -14,6 +10,5 @@
     "app/(panel)/solicitudes/page.jsx": { "maxDuration": 60 },
     "app/(panel)/simulacro/page.jsx": { "maxDuration": 60 }
   },
-
   "regions": ["gru1"]
 }

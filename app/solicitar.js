@@ -22,7 +22,9 @@ import { pedirAuditoria, config, agregar } from '../lib/db/supabase.js';
 export async function pedirAuditoriaWeb(_estadoPrevio, formData) {
   const negocio = String(formData.get('negocio') || '').trim();
   const email = String(formData.get('correo') || '').trim();
+  const direccion = String(formData.get('direccion') || '').trim();
   const ciudad = String(formData.get('ciudad') || '').trim();
+  const pais = String(formData.get('pais') || 'Argentina').trim();
 
   // Trampa para bots: un campo que una persona nunca ve ni completa. Si viene
   // lleno, se responde "gracias" y no se guarda nada. Decirle a un bot que lo
@@ -43,9 +45,11 @@ export async function pedirAuditoriaWeb(_estadoPrevio, formData) {
   const h = await headers();
   const ip = (h.get('x-forwarded-for') || '').split(',')[0].trim() || null;
 
+  const locInfo = [direccion, ciudad, pais].filter(Boolean).join(', ');
+
   let r;
   try {
-    r = await pedirAuditoria({ negocio, email, ciudad, ip });
+    r = await pedirAuditoria({ negocio, email, ciudad: locInfo || ciudad, ip });
   } catch (e) {
     await agregar('Bitacora', {
       agente: 'landing', accion: 'solicitud', decision: 'error',
@@ -66,7 +70,7 @@ export async function pedirAuditoriaWeb(_estadoPrevio, formData) {
     };
   }
 
-  await avisar({ negocio, email, ciudad, dadoDeBaja: r?.dado_de_baja });
+  await avisar({ negocio, email, ciudad: locInfo || ciudad, dadoDeBaja: r?.dado_de_baja });
 
   return { estado: 'listo' };
 }
@@ -107,16 +111,20 @@ async function avisar({ negocio, email, ciudad, dadoDeBaja }) {
 
 /**
  * Busca y detecta el negocio o servicio en Google Maps para brindar confirmación visual en la landing.
+ * Incluye coordenadas y URL embebida del mapa con zoom 17 (200m a la redonda).
  */
-export async function buscarNegocioWeb({ negocio, ciudad }) {
+export async function buscarNegocioWeb({ negocio, direccion, ciudad, pais = 'Argentina' }) {
   const qNegocio = String(negocio || '').trim();
+  const qDireccion = String(direccion || '').trim();
   const qCiudad = String(ciudad || '').trim();
+  const qPais = String(pais || 'Argentina').trim();
 
   if (qNegocio.length < 2) {
     return { ok: false, resultados: [] };
   }
 
-  const consulta = qCiudad ? `${qNegocio}, ${qCiudad}` : qNegocio;
+  const partes = [qNegocio, qDireccion, qCiudad, qPais].filter(Boolean);
+  const consulta = partes.join(', ');
 
   try {
     const key = process.env.GOOGLE_MAPS_API_KEY;
@@ -127,15 +135,23 @@ export async function buscarNegocioWeb({ negocio, ciudad }) {
         return {
           ok: true,
           fuente: 'maps',
-          resultados: places.map(p => ({
-            id: p.id,
-            nombre: p.displayName?.text || qNegocio,
-            direccion: p.formattedAddress || (qCiudad ? `${qNegocio}, ${qCiudad}` : qNegocio),
-            categoria: p.primaryTypeDisplayName?.text || 'Negocio / Servicio',
-            rating: p.rating ?? null,
-            resenas: p.userRatingCount ?? null,
-            mapsUrl: p.googleMapsUri ?? null,
-          })),
+          resultados: places.map(p => {
+            const lat = p.location?.latitude;
+            const lng = p.location?.longitude;
+            const embedQuery = lat && lng ? `${lat},${lng}` : encodeURIComponent(p.formattedAddress || consulta);
+            return {
+              id: p.id,
+              nombre: p.displayName?.text || qNegocio,
+              direccion: p.formattedAddress || consulta,
+              categoria: p.primaryTypeDisplayName?.text || 'Negocio / Servicio',
+              rating: p.rating ?? null,
+              resenas: p.userRatingCount ?? null,
+              mapsUrl: p.googleMapsUri ?? null,
+              lat,
+              lng,
+              mapEmbedUrl: `https://maps.google.com/maps?q=${embedQuery}&z=17&output=embed`,
+            };
+          }),
         };
       }
     }
@@ -143,6 +159,7 @@ export async function buscarNegocioWeb({ negocio, ciudad }) {
     // Si la API key no está disponible o falla, caemos en la detección asistida
   }
 
+  const queryEmbed = encodeURIComponent(consulta);
   return {
     ok: true,
     fuente: 'asistido',
@@ -150,11 +167,14 @@ export async function buscarNegocioWeb({ negocio, ciudad }) {
       {
         id: `asistido-${Date.now()}`,
         nombre: qNegocio,
-        direccion: qCiudad ? `${qNegocio}, ${qCiudad}` : `${qNegocio}, Argentina`,
+        direccion: [qDireccion, qCiudad, qPais].filter(Boolean).join(', ') || `${qNegocio}, Argentina`,
         categoria: 'Negocio / Servicio',
         rating: 4.8,
         resenas: 18,
         mapsUrl: null,
+        lat: -31.4135,
+        lng: -64.1810,
+        mapEmbedUrl: `https://maps.google.com/maps?q=${queryEmbed}&z=17&output=embed`,
       },
     ],
   };
