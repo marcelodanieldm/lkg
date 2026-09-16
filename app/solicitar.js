@@ -161,7 +161,6 @@ export async function buscarNegocioWeb({ negocio, direccion, ciudad, pais = 'Arg
   }
 
   const queryEmbed = encodeURIComponent(consulta);
-  const catInferida = inferirCategoriaTexto(qNegocio);
   const direccionCompleta = qDireccion 
     ? [qDireccion, qCiudad, qPais].filter(Boolean).join(', ')
     : [qNegocio, qCiudad, qPais].filter(Boolean).join(', ');
