@@ -6,6 +6,7 @@ import { requerirSesion } from '../../../lib/auth.js';
 import { POST as auditarRoute } from '../../api/auditar/route.js';
 import { POST as cronRoute } from '../../api/cron/[tarea]/route.js';
 import { agenteSugeridorMensaje } from '../../../lib/ia/gemini.js';
+import { huella } from '../../../lib/guardrails/guard.js';
 
 /**
  * Acciones de servidor para la pantalla /solicitudes.
@@ -91,7 +92,10 @@ export async function auditarSolicitud(formData) {
           : `Hola,\n\nYa está lista la auditoría de ${negocio}.\n\nTu puntaje obtenido fue de ${data.score}/100 (con un potencial estimado de ${data.potencial}/100).\n\n`;
         const cuerpoFinal = `${intro}Analizamos el perfil de Google Maps de ${negocio} y preparamos un informe detallado con hallazgos y recomendaciones.\n\nPodés consultar el informe completo en el siguiente enlace:\n${informeUrl}\n\nSi preferís no recibir más mensajes, respondé BAJA.`;
 
+        const intentoId = huella({ leadId: data.placeId, canal: 'email', paso: 1, cuerpo: cuerpoFinal });
+
         await agregar('Aprobaciones', {
+          id: intentoId,
           lead_id: data.placeId,
           negocio,
           canal: 'email',
@@ -102,7 +106,7 @@ export async function auditarSolicitud(formData) {
           decision: 'APROBADO',
           decidido_en: new Date().toISOString(),
           motivo: 'Solicitud auditada desde el panel con envío por email activado',
-        }).catch(() => {});
+        }).catch((e) => console.error('Error al agregar a Aprobaciones:', e));
 
         // Disparar la ejecución de aprobaciones para pasar por el guardián y enviar por Gmail
         const cronReq = new Request('http://localhost/api/cron/aprobaciones', {
