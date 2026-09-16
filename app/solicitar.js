@@ -165,6 +165,22 @@ export async function buscarNegocioWeb({ negocio, direccion, ciudad, pais = 'Arg
     ? [qDireccion, qCiudad, qPais].filter(Boolean).join(', ')
     : [qNegocio, qCiudad, qPais].filter(Boolean).join(', ');
 
+  let ratingAi = null;
+  let resenasAi = null;
+  let catAi = catInferida;
+
+  try {
+    const { agenteAnalizadorPerfil } = await import('../lib/ia/gemini.js');
+    const aiData = await agenteAnalizadorPerfil({ negocio: qNegocio, direccion: qDireccion, ciudad: qCiudad, pais: qPais });
+    if (aiData) {
+      if (aiData.rating) ratingAi = aiData.rating;
+      if (aiData.cantidadResenas) resenasAi = aiData.cantidadResenas;
+      if (aiData.categoriaPrimariaLabel) catAi = aiData.categoriaPrimariaLabel;
+    }
+  } catch {
+    // Si Gemini no está disponible, se mantiene la inferencia de categoría básica
+  }
+
   return {
     ok: true,
     fuente: 'asistido',
@@ -173,9 +189,9 @@ export async function buscarNegocioWeb({ negocio, direccion, ciudad, pais = 'Arg
         id: `asistido-${Date.now()}`,
         nombre: qNegocio,
         direccion: direccionCompleta,
-        categoria: catInferida,
-        rating: null,
-        resenas: null,
+        categoria: catAi,
+        rating: ratingAi,
+        resenas: resenasAi,
         mapsUrl: null,
         lat: -31.4135,
         lng: -64.1810,

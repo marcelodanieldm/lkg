@@ -69,52 +69,61 @@ export async function POST(req) {
     const nombre = partes[0] || queryStr;
     const direccion = queryStr.includes(',') ? queryStr : `${queryStr}, Argentina`;
 
-    let catLabel = 'Comercio / Servicio Local';
-    let catId = 'local_business';
-    const t = queryStr.toLowerCase();
+    let aiData = null;
+    try {
+      const { agenteAnalizadorPerfil } = await import('../../../lib/ia/gemini.js');
+      aiData = await agenteAnalizadorPerfil({ negocio: nombre, direccion, ciudad: partes[1] || '' });
+    } catch {
+      // Si falla la llamada a Gemini, se usan los valores básicos por defecto
+    }
 
-    if (t.includes('panad') || t.includes('bakery')) { catId = 'bakery'; catLabel = 'Panadería'; }
-    else if (t.includes('farmac') || t.includes('botic')) { catId = 'pharmacy'; catLabel = 'Farmacia'; }
-    else if (t.includes('odont') || t.includes('dental')) { catId = 'dentist'; catLabel = 'Odontólogo'; }
-    else if (t.includes('contab') || t.includes('estudio')) { catId = 'accounting'; catLabel = 'Estudio Contable'; }
-    else if (t.includes('abogad') || t.includes('jurid')) { catId = 'lawyer'; catLabel = 'Estudio Jurídico'; }
-    else if (t.includes('taller') || t.includes('mecanic')) { catId = 'car_repair'; catLabel = 'Taller Mecánico'; }
-    else if (t.includes('pizz') || t.includes('restauran') || t.includes('bar')) { catId = 'restaurant'; catLabel = 'Restaurante'; }
-    else if (t.includes('peluquer') || t.includes('barber')) { catId = 'beauty_salon'; catLabel = 'Peluquería'; }
-    else if (t.includes('gimnas') || t.includes('fit')) { catId = 'gym'; catLabel = 'Gimnasio'; }
-    else if (t.includes('veterin')) { catId = 'veterinary_care'; catLabel = 'Veterinaria'; }
-    else if (t.includes('inmobil')) { catId = 'real_estate_agency'; catLabel = 'Inmobiliaria'; }
+    let catLabel = aiData?.categoriaPrimariaLabel || 'Comercio / Servicio Local';
+    let catId = aiData?.categoriaPrimaria || 'local_business';
+    if (!aiData) {
+      const t = queryStr.toLowerCase();
+      if (t.includes('panad') || t.includes('bakery')) { catId = 'bakery'; catLabel = 'Panadería'; }
+      else if (t.includes('farmac') || t.includes('botic')) { catId = 'pharmacy'; catLabel = 'Farmacia'; }
+      else if (t.includes('odont') || t.includes('dental')) { catId = 'dentist'; catLabel = 'Odontólogo'; }
+      else if (t.includes('contab') || t.includes('estudio')) { catId = 'accounting'; catLabel = 'Estudio Contable'; }
+      else if (t.includes('abogad') || t.includes('jurid')) { catId = 'lawyer'; catLabel = 'Estudio Jurídico'; }
+      else if (t.includes('taller') || t.includes('mecanic')) { catId = 'car_repair'; catLabel = 'Taller Mecánico'; }
+      else if (t.includes('pizz') || t.includes('restauran') || t.includes('bar')) { catId = 'restaurant'; catLabel = 'Restaurante'; }
+      else if (t.includes('peluquer') || t.includes('barber')) { catId = 'beauty_salon'; catLabel = 'Peluquería'; }
+      else if (t.includes('gimnas') || t.includes('fit')) { catId = 'gym'; catLabel = 'Gimnasio'; }
+      else if (t.includes('veterin')) { catId = 'veterinary_care'; catLabel = 'Veterinaria'; }
+      else if (t.includes('inmobil')) { catId = 'real_estate_agency'; catLabel = 'Inmobiliaria'; }
+    }
 
     const cleanId = placeId ? String(placeId).replace(/^demo_/, '') : `inf_${Date.now()}`;
 
     perfil = {
-      fuente: 'asistido',
+      fuente: aiData ? 'gemini_analisis' : 'asistido',
       placeId: cleanId,
       nombre,
       direccion,
       telefono: null,
-      sitioWeb: null,
+      sitioWeb: aiData?.sitioWeb || null,
       mapsUrl: null,
       estado: 'OPERATIONAL',
       categoriaPrimaria: catId,
       categoriaPrimariaLabel: catLabel,
       categoriasSecundarias: [],
-      descripcion: '',
-      rating: null,
-      cantidadResenas: 0,
-      tasaRespuestaResenas: null,
-      diasDesdeUltimaResena: null,
-      cantidadFotos: 0,
+      descripcion: aiData?.descripcion || '',
+      rating: aiData?.rating ?? null,
+      cantidadResenas: aiData?.cantidadResenas ?? 0,
+      tasaRespuestaResenas: aiData?.tasaRespuestaResenas ?? null,
+      diasDesdeUltimaResena: aiData?.diasDesdeUltimaResena ?? null,
+      cantidadFotos: aiData?.cantidadFotos ?? 0,
       horarios: [{ dia: 1 }, { dia: 2 }, { dia: 3 }, { dia: 4 }, { dia: 5 }],
       horariosEspeciales: [],
-      atributos: [],
-      servicios: [],
+      atributos: aiData?.atributos || [],
+      servicios: aiData?.servicios || [],
       postsUltimos30Dias: null,
       ofertasActivas: null,
       mensajeriaActiva: null,
       reservasActivas: null,
-      diasDesdeUltimaFoto: null,
-      tiposDeFoto: { fachada: false, interior: false, producto: false, equipo: false },
+      diasDesdeUltimaFoto: aiData?.diasDesdeUltimaFoto ?? null,
+      tiposDeFoto: aiData?.tiposDeFoto || { fachada: false, interior: false, producto: false, equipo: false },
       redes: {},
       web: null,
       resenasMuestra: [],
