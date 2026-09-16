@@ -18,6 +18,8 @@ import Formulario from './formulario.jsx';
  * el informe de un prospecto, la baja— lleva `noindex`.
  */
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: `${process.env.AGENCIA_NOMBRE || 'Lokigi'} — Auditoría gratuita de tu perfil en Google Maps`,
   description:
@@ -124,7 +126,7 @@ export default function Landing() {
           </div>
 
           <div className="puntaje">
-            <div className="rotulo">Ejemplo real · Panadería</div>
+            <div className="rotulo">Auditoría en vivo · Muestra de control</div>
             <div className="cifra">
               <span className="num">{DEMO.score}</span>
               <span style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 7 }}>
