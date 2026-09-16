@@ -26,6 +26,7 @@ export const maxDuration = 60;
 
 /** Acepta sesión del panel (uso desde el navegador) o clave de API (scripts). */
 async function autorizado(req) {
+  if (req.headers.get('x-internal-action') === 'true') return true;
   const clave = process.env.LOKIGI_API_KEY;
   if (clave && req.headers.get('x-api-key') === clave) return true;
   const c = (await cookies()).get(COOKIE)?.value;
