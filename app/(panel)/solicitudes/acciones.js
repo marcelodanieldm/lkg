@@ -1,12 +1,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import * as db from '../../../lib/db/supabase.js';
 import { atenderSolicitud, upsert, guardarInforme, agregar } from '../../../lib/db/supabase.js';
 import { requerirSesion } from '../../../lib/auth.js';
 import { POST as auditarRoute } from '../../api/auditar/route.js';
 import { POST as cronRoute } from '../../api/cron/[tarea]/route.js';
 import { agenteSugeridorMensaje } from '../../../lib/ia/gemini.js';
-import { huella } from '../../../lib/guardrails/guard.js';
+import { huella, evaluar, VEREDICTO, usarFuente } from '../../../lib/guardrails/guard.js';
 
 /**
  * Acciones de servidor para la pantalla /solicitudes.
@@ -72,7 +73,7 @@ export async function auditarSolicitud(formData) {
         await guardarInforme(data.placeId, data.informeHTML, data.score, data.version || 'v1.0').catch(() => {});
       }
 
-      // 3. Si se solicita envío por mail, generar sugerencia de IA (si no hay manual) y enviar
+      // 3. Si se solicita envío por mail, generar sugerencia de IA (si no hay manual) y registrar en Aprobaciones
       let notaFinal = null;
       if (debeEnviar) {
         let sugerido = mensajePersonalizado;
@@ -97,18 +98,17 @@ export async function auditarSolicitud(formData) {
         await agregar('Aprobaciones', {
           id: intentoId,
           lead_id: data.placeId,
-          negocio,
+          negocio: data.negocio || negocio,
           canal: 'email',
           paso: 1,
           destinatario: email,
-          asunto: `Lokigi · Auditoría de tu perfil de Google Maps (${negocio})`,
+          asunto: `Lokigi · Auditoría de tu perfil de Google Maps (${data.negocio || negocio})`,
           cuerpo: cuerpoFinal,
           decision: 'APROBADO',
           decidido_en: new Date().toISOString(),
           motivo: 'Solicitud auditada desde el panel con envío por email activado',
         }).catch((e) => console.error('Error al agregar a Aprobaciones:', e));
 
-        // Disparar la ejecución de aprobaciones para pasar por el guardián y enviar por Gmail
         const cronReq = new Request('http://localhost/api/cron/aprobaciones', {
           method: 'POST',
           headers: {
@@ -121,6 +121,7 @@ export async function auditarSolicitud(formData) {
           console.error('Error al disparar cron aprobaciones:', e);
           return null;
         });
+
         if (cRes) {
           const cData = await cRes.json().catch(() => ({}));
           console.log('Resultado envío aprobaciones:', cData);
