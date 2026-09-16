@@ -125,6 +125,7 @@ export async function buscarNegocioWeb({ negocio, direccion, ciudad, pais = 'Arg
 
   const partes = [qNegocio, qDireccion, qCiudad, qPais].filter(Boolean);
   const consulta = partes.join(', ');
+  const catInferida = inferirCategoriaTexto(qNegocio);
 
   try {
     const key = process.env.GOOGLE_MAPS_API_KEY;
@@ -143,7 +144,7 @@ export async function buscarNegocioWeb({ negocio, direccion, ciudad, pais = 'Arg
               id: p.id,
               nombre: p.displayName?.text || qNegocio,
               direccion: p.formattedAddress || consulta,
-              categoria: p.primaryTypeDisplayName?.text || 'Negocio / Servicio',
+              categoria: p.primaryTypeDisplayName?.text || catInferida,
               rating: p.rating ?? null,
               resenas: p.userRatingCount ?? null,
               mapsUrl: p.googleMapsUri ?? null,
@@ -161,6 +162,10 @@ export async function buscarNegocioWeb({ negocio, direccion, ciudad, pais = 'Arg
 
   const queryEmbed = encodeURIComponent(consulta);
   const catInferida = inferirCategoriaTexto(qNegocio);
+  const direccionCompleta = qDireccion 
+    ? [qDireccion, qCiudad, qPais].filter(Boolean).join(', ')
+    : [qNegocio, qCiudad, qPais].filter(Boolean).join(', ');
+
   return {
     ok: true,
     fuente: 'asistido',
@@ -168,7 +173,7 @@ export async function buscarNegocioWeb({ negocio, direccion, ciudad, pais = 'Arg
       {
         id: `asistido-${Date.now()}`,
         nombre: qNegocio,
-        direccion: [qDireccion, qCiudad, qPais].filter(Boolean).join(', ') || `${qNegocio}, Argentina`,
+        direccion: direccionCompleta,
         categoria: catInferida,
         rating: null,
         resenas: null,

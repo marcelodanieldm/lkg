@@ -142,7 +142,7 @@ export default function Formulario() {
 
           <div className="cuerpo-det">
             <b>{hallado.nombre}</b>
-            <p className="dir-det">{hallado.direccion}</p>
+            <p className="dir-det">📍 {hallado.direccion}</p>
             <div className="meta-det">
               {hallado.rating && (
                 <span className="rating-det">
