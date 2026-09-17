@@ -92,10 +92,14 @@ export async function auditarSolicitud(formData) {
         let intro = sugerido ? `${sugerido}\n\n` : '';
         if (!intro) {
           const resShort = resumenCorto(data);
-          const hallazgoTxt = resShort.hallazgoTop ? `Lo más relevante que encontramos:\n\n${resShort.hallazgoTop}\n${resShort.hallazgoTopDetalle}\n\n` : '';
-          intro = `Hola,\n\nYa está lista la auditoría de ${data.negocio || negocio}.\n\nTu puntaje obtenido fue de ${data.score}/100 (con un potencial estimado de ${data.potencial}/100).\n\n${hallazgoTxt}`;
+          const hallazgoTxt = resShort.hallazgoTop ? `Un hallazgo clave para impulsar la visibilidad de tu negocio:\n\n${resShort.hallazgoTop}\n${resShort.hallazgoTopDetalle}\n\n` : '';
+          intro = `Hola,\n\nAnalizamos el perfil de Google Maps de ${data.negocio || negocio}. Tu puntaje actual es de ${data.score}/100, con un potencial alcanzable de ${data.potencial}/100.\n\n${hallazgoTxt}`;
         }
-        const cuerpoFinal = `${intro}Analizamos el perfil de Google Maps de ${data.negocio || negocio} y preparamos un informe detallado con hallazgos y recomendaciones.\n\nPodés consultar el informe completo en el siguiente enlace:\n${informeUrl}\n\nSi preferís no recibir más mensajes, respondé BAJA.`;
+        const urlPago = `${informeUrl}#presupuesto`;
+        const cuerpoFinal = `${intro}Optimizando los puntos clave de tu perfil, podés captar más clientes locales todos los meses de manera directa y sostenida.\n\n` +
+          `Podés consultar el informe de diagnóstico completo en:\n${informeUrl}\n\n` +
+          `Y si querés activar el plan de optimización ahora mismo, podés revisar las alternativas de inversión y acceder a la pasarela de pago en:\n${urlPago}\n\n` +
+          `Quedo a tu disposición para cualquier consulta.\n\nSi preferís no recibir más mensajes, respondé BAJA.`;
 
         const intentoId = huella({ leadId: data.placeId, canal: 'email', paso: 1, cuerpo: cuerpoFinal });
 
