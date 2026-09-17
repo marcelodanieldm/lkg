@@ -7,6 +7,7 @@ import { requerirSesion } from '../../../lib/auth.js';
 import { POST as auditarRoute } from '../../api/auditar/route.js';
 import { POST as cronRoute } from '../../api/cron/[tarea]/route.js';
 import { agenteSugeridorMensaje } from '../../../lib/ia/gemini.js';
+import { resumenCorto } from '../../../lib/core/report.js';
 import { huella, evaluar, VEREDICTO, usarFuente } from '../../../lib/guardrails/guard.js';
 
 /**
@@ -88,10 +89,13 @@ export async function auditarSolicitud(formData) {
           }).catch(() => null);
         }
 
-        const intro = sugerido
-          ? `${sugerido}\n\n`
-          : `Hola,\n\nYa está lista la auditoría de ${negocio}.\n\nTu puntaje obtenido fue de ${data.score}/100 (con un potencial estimado de ${data.potencial}/100).\n\n`;
-        const cuerpoFinal = `${intro}Analizamos el perfil de Google Maps de ${negocio} y preparamos un informe detallado con hallazgos y recomendaciones.\n\nPodés consultar el informe completo en el siguiente enlace:\n${informeUrl}\n\nSi preferís no recibir más mensajes, respondé BAJA.`;
+        let intro = sugerido ? `${sugerido}\n\n` : '';
+        if (!intro) {
+          const resShort = resumenCorto(data);
+          const hallazgoTxt = resShort.hallazgoTop ? `Lo más relevante que encontramos:\n\n${resShort.hallazgoTop}\n${resShort.hallazgoTopDetalle}\n\n` : '';
+          intro = `Hola,\n\nYa está lista la auditoría de ${data.negocio || negocio}.\n\nTu puntaje obtenido fue de ${data.score}/100 (con un potencial estimado de ${data.potencial}/100).\n\n${hallazgoTxt}`;
+        }
+        const cuerpoFinal = `${intro}Analizamos el perfil de Google Maps de ${data.negocio || negocio} y preparamos un informe detallado con hallazgos y recomendaciones.\n\nPodés consultar el informe completo en el siguiente enlace:\n${informeUrl}\n\nSi preferís no recibir más mensajes, respondé BAJA.`;
 
         const intentoId = huella({ leadId: data.placeId, canal: 'email', paso: 1, cuerpo: cuerpoFinal });
 
