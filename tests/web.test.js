@@ -266,6 +266,22 @@ test('PROPIEDAD CRÍTICA: el formulario público no crea leads ni revierte bajas
     'la migración 004 ya no deja constancia de que una baja no se revierte');
 });
 
+test('la confirmación del formulario público muestra la dirección de correo o cae al texto genérico', () => {
+  const accion = sinComentarios(leer('app/solicitar.js'));
+  assert.ok(/return\s*\{\s*estado:\s*['"]listo['"]\s*,\s*email\s*\}/.test(accion),
+    'la acción de solicitar.js no devuelve el correo validado en el retorno exitoso');
+
+  const honeypotMatch = accion.match(/sitio[\s\S]*?return\s*([^;}]+)/);
+  assert.ok(honeypotMatch, 'no se encontró el bloque del honeypot');
+  assert.ok(!/email/.test(honeypotMatch[1]), 'el honeypot no debe incluir el correo en la respuesta falsa');
+
+  const formulario = leer('app/formulario.jsx');
+  assert.ok(/estado\?\.email/.test(formulario), 'formulario.jsx no evalúa estado.email');
+  assert.ok(/al correo que dejaste/.test(formulario), 'formulario.jsx no incluye el fallback genérico');
+  assert.ok(!/mailto:/.test(formulario.slice(formulario.indexOf("estado?.estado === 'listo'"))),
+    'la pantalla de confirmación no debe usar enlaces mailto:');
+});
+
 test('los estilos del informe no se escapan a la página que lo contiene', async () => {
   // `report.js` usa clases genéricas —.barra, .cta, .sub— que también existen
   // en globals.css. Sin acotarlas, la navegación del panel y el botón de la

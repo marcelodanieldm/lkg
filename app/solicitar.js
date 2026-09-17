@@ -72,7 +72,7 @@ export async function pedirAuditoriaWeb(_estadoPrevio, formData) {
 
   await avisar({ negocio, email, ciudad: locInfo || ciudad, dadoDeBaja: r?.dado_de_baja });
 
-  return { estado: 'listo' };
+  return { estado: 'listo', email };
 }
 
 /**

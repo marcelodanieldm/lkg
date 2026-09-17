@@ -45,14 +45,22 @@ export default function Formulario() {
   }, [negocio, direccion, ciudad, pais, confirmado]);
 
   if (estado?.estado === 'listo') {
+    const destino = estado?.email ? `a ${estado.email}` : 'al correo que dejaste';
     return (
       <div className="formulario">
         <div className="gracias">
           <b>Anotado.</b>
           <p>
-            Te mando la auditoría en un par de días hábiles, en un solo correo.
-            Revisá la carpeta de spam o correo no deseado por las dudas.
-            Si mientras tanto querés preguntarme algo, respondeme ese mismo mensaje.
+            Te mando la auditoría lo antes posible {destino},
+            en un solo mensaje y con el informe completo.
+          </p>
+          <p>
+            Revisá también la carpeta de spam o correo no deseado: soy un
+            remitente nuevo y a veces caigo ahí. Si lo encontrás ahí, marcalo
+            como «no es spam» y los siguientes te llegan bien.
+          </p>
+          <p>
+            Cuando llegue, si querés preguntarme algo, respondé ese mismo correo.
           </p>
         </div>
       </div>
@@ -209,7 +217,7 @@ export default function Formulario() {
 
       {estado?.estado === 'error' && <p className="yerro">{estado.mensaje}</p>}
 
-      <p className="letra">Llega en dos días hábiles. Un solo correo.</p>
+      <p className="letra">Un solo correo, con el informe completo.</p>
     </form>
   );
 }
