@@ -54,6 +54,7 @@ export async function pedirAuditoriaWeb(_estadoPrevio, formData) {
   try {
     r = await pedirAuditoria({ negocio, email, ciudad: locInfo || ciudad, ip, placeId });
   } catch (e) {
+    console.error('Error al registrar pedido de auditoría web:', e?.message || e);
     await agregar('Bitacora', {
       agente: 'landing', accion: 'solicitud', decision: 'error',
       razon: `No se pudo registrar un pedido de ${negocio} (${email}): ${String(e.message).slice(0, 300)}`,
