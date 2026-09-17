@@ -104,6 +104,12 @@ for (const [k, ayuda] of Object.entries(OPCIONALES)) {
 
 // El error que más caro sale: prospectar desde el dominio principal.
 const from = process.env.GMAIL_FROM || '';
+const contactoBaja = process.env.EMAIL_OPERADOR || from;
+if (esProd && !contactoBaja) {
+  mal('sin dirección de contacto (EMAIL_OPERADOR / GMAIL_FROM) en producción',
+      'La página de baja y los informes necesitan una dirección de contacto visible para los usuarios.');
+}
+
 if (/@gmail\.com/i.test(from)) {
   mal('GMAIL_FROM apunta a una cuenta @gmail.com personal',
       'Google restringe cuentas personales que hacen envío comercial. Usá Workspace con un dominio DEDICADO: ' +

@@ -198,4 +198,33 @@ test('el informe HTML de panaderia contiene una casilla por cada hallazgo', () =
     `el informe renderizado tiene ${matches.length} casillas y se esperaban ${topHallazgos.length}`);
 });
 
+test('fotosEsUnPiso marca cantidad_fotos como no verificable (ratio: null, estado: nd)', () => {
+  const r = auditar({ ...PERFILES_DEMO.panaderia, cantidadFotos: 10, fotosEsUnPiso: true });
+  const item = r.noVerificados.find(x => x.id === 'cantidad_fotos');
+  assert.ok(item, 'cantidad_fotos debe estar en noVerificados');
+  assert.equal(item.ratio, null);
+  assert.equal(item.estado, 'nd');
+  assert.ok(item.evidencia.includes('Al menos 10 fotos detectadas'));
+});
+
+test('servicios null marca servicios_cargados como no verificable', () => {
+  const r = auditar({ ...PERFILES_DEMO.panaderia, servicios: null });
+  const item = r.noVerificados.find(x => x.id === 'servicios_cargados');
+  assert.ok(item, 'servicios_cargados debe estar en noVerificados');
+  assert.equal(item.ratio, null);
+  assert.equal(item.estado, 'nd');
+});
+
+test('redes_enlazadas requiere sitio web accesible (ratio: null sin sitio o sin web ok)', () => {
+  const rSinSitio = auditar({ ...PERFILES_DEMO.panaderia, sitioWeb: null, web: null });
+  const itemSinSitio = rSinSitio.noVerificados.find(x => x.id === 'redes_enlazadas');
+  assert.ok(itemSinSitio, 'redes_enlazadas debe estar en noVerificados cuando no hay sitio web');
+  assert.equal(itemSinSitio.ratio, null);
+
+  const rWebError = auditar({ ...PERFILES_DEMO.panaderia, sitioWeb: 'https://ejemplo.com', web: { ok: false } });
+  const itemWebError = rWebError.noVerificados.find(x => x.id === 'redes_enlazadas');
+  assert.ok(itemWebError, 'redes_enlazadas debe estar en noVerificados cuando el análisis del sitio no fue OK');
+});
+
+
 

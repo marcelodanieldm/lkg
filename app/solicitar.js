@@ -34,10 +34,10 @@ export async function pedirAuditoriaWeb(_estadoPrevio, formData) {
   }
 
   if (negocio.length < 2) {
-    return { estado: 'error', mensaje: 'Falta el nombre del negocio.' };
+    return { estado: 'error', mensaje: 'Falta el nombre del negocio.', campo: 'negocio' };
   }
   if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) {
-    return { estado: 'error', mensaje: 'Revisá la dirección de correo: no parece válida.' };
+    return { estado: 'error', mensaje: 'Revisá la dirección de correo: no parece válida.', campo: 'correo' };
   }
 
   // La IP la pone Vercel. Sirve para cortar una ráfaga, nada más: no se
@@ -61,15 +61,18 @@ export async function pedirAuditoriaWeb(_estadoPrevio, formData) {
     return {
       estado: 'error',
       mensaje: 'No se pudo registrar el pedido. Escribime directo y lo hago a mano.',
+      campo: 'negocio',
     };
   }
 
   if (r && r.ok === false) {
+    const esEmail = r.motivo === 'email';
     return {
       estado: 'error',
-      mensaje: r.motivo === 'email'
+      mensaje: esEmail
         ? 'Revisá la dirección de correo: no parece válida.'
         : 'Revisá el nombre del negocio.',
+      campo: esEmail ? 'correo' : 'negocio',
     };
   }
 

@@ -1,4 +1,25 @@
+import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
+
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-fraunces',
+});
+
+const ibmSans = IBM_Plex_Sans({
+  weight: ['400', '500', '600'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-ibm-sans',
+});
+
+const ibmMono = IBM_Plex_Mono({
+  weight: ['400', '500', '600'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-ibm-mono',
+});
 
 /**
  * `noindex` por defecto, y a propósito.
@@ -33,15 +54,7 @@ export const viewport = { width: 'device-width', initialScale: 1 };
  */
 export default function RootLayout({ children }) {
   return (
-    <html lang="es">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
-        />
-      </head>
+    <html lang="es-AR" className={`${fraunces.variable} ${ibmSans.variable} ${ibmMono.variable}`}>
       <body>{children}</body>
     </html>
   );

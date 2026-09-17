@@ -187,9 +187,11 @@ export async function POST(req) {
   }
 
   if (conInforme) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
     salida.informeHTML = generarInformeHTML(resultado, {
       agencia: process.env.AGENCIA_NOMBRE || 'Lokigi',
       remitente: process.env.AGENCIA_REMITENTE || '',
+      ctaUrl: `${appUrl}/#pedir`,
     });
   }
 

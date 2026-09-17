@@ -17,6 +17,7 @@
 
 # vercel
 .vercel
+/tmp/
 
 # debug & logs
 npm-debug.log*

@@ -12,7 +12,7 @@
 :root {
   --ground:#F2F4F7; --surface:#FFFFFF; --surface-2:#E8ECF1; --surface-3:#DDE3EA;
   --ink:#0F151C; --ink-2:#3A4553; --muted:#697483;
-  --line:#DBE1E8; --line-2:#C2CBD6;
+  --line:#DBE1E8; --line-2:#76859A;
   --accent:#1B4FD8; --accent-soft:#DEE7FB; --accent-ink:#123A9E;
   --stop:#B03A26; --stop-soft:#F8E2DD;
   --warn:#8F6410; --warn-soft:#F6EBD5;
@@ -26,7 +26,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --ground:#0C1116; --surface:#161C24; --surface-2:#1D252F; --surface-3:#26303B;
-    --ink:#E6ECF3; --ink-2:#AEBAC8; --muted:#788595;
+    --ink:#E6ECF3; --ink-2:#AEBAC8; --muted:#9BA8B8;
     --line:#252E39; --line-2:#37424F;
     --accent:#6C9BFF; --accent-soft:#152342; --accent-ink:#A8C3FF;
     --stop:#E58165; --stop-soft:#2E1B16;
@@ -41,7 +41,7 @@
 
 :root[data-theme="dark"] {
   --ground:#0C1116; --surface:#161C24; --surface-2:#1D252F; --surface-3:#26303B;
-  --ink:#E6ECF3; --ink-2:#AEBAC8; --muted:#788595;
+  --ink:#E6ECF3; --ink-2:#AEBAC8; --muted:#9BA8B8;
   --line:#252E39; --line-2:#37424F;
   --accent:#6C9BFF; --accent-soft:#152342; --accent-ink:#A8C3FF;
   --stop:#E58165; --stop-soft:#2E1B16;
@@ -59,7 +59,7 @@ body {
   margin: 0;
   background: var(--ground);
   color: var(--ink);
-  font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-ibm-sans), "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 15.5px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -69,6 +69,23 @@ a { color: var(--accent); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 img { max-width: 100%; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.enlace-salto {
+  position: absolute;
+  top: -100px;
+  left: 16px;
+  background: var(--accent);
+  color: #FFFFFF;
+  padding: 10px 16px;
+  border-radius: 6px;
+  z-index: 100;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+.enlace-salto:focus {
+  top: 16px;
+}
 
 /* ── Barra del panel ─────────────────────────────────────── */
 
@@ -351,15 +368,19 @@ h2.titulo { font-family: Fraunces, Georgia, serif; font-weight: 500; font-size: 
 .cierre h2 { font-family: Fraunces, Georgia, serif; font-weight: 500; font-size: clamp(30px, 3.6vw, 42px);
              color: #F2F4F7; letter-spacing: -.028em; line-height: 1.1; margin: 0; text-wrap: balance; }
 .cierre .entradilla { color: #AEBAC8; max-width: 54ch; }
-.formulario { background: #FFFFFF; border-radius: 14px; padding: 26px 28px; }
-.formulario label { display: block; font-size: 13px; font-weight: 600; color: #3A4553;
-                    letter-spacing: .03em; text-transform: uppercase;
-                    font-family: "IBM Plex Mono", ui-monospace, monospace; }
+.formulario { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 26px 28px; }
+.formulario label { display: block; font-size: 14.5px; font-weight: 600; color: var(--ink-2);
+                    text-transform: none; font-family: inherit; }
 .formulario label + input { margin-bottom: 16px; }
-.formulario input { width: 100%; font: inherit; font-size: 15.5px; padding: 12px 14px; margin-top: 8px;
-                    border: 1px solid #C2CBD6; border-radius: 9px; background: #F2F4F7; color: #0F151C; }
+.formulario input, .formulario select { width: 100%; font: inherit; font-size: 15.5px; padding: 12px 14px; margin-top: 8px;
+                    border: 1px solid var(--line-2); border-radius: 9px; background: var(--ground); color: var(--ink); }
+.formulario input::placeholder { color: #545454; opacity: 1; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .formulario input::placeholder { color: #9BA8B8; }
+}
+:root[data-theme="dark"] .formulario input::placeholder { color: #9BA8B8; }
 .formulario button { width: 100%; margin-top: 2px; }
-.formulario .letra { font-size: 13px; color: #697483; margin-top: 12px; text-align: center; }
+.formulario .letra { font-size: 13px; color: var(--muted); margin-top: 12px; text-align: center; }
 
 .pie { background: var(--surface); border-top: 1px solid var(--line); padding: 34px 0; }
 .pie .ancho { display: flex; gap: 26px; align-items: center; flex-wrap: wrap; }
@@ -516,23 +537,45 @@ h2.titulo { font-family: Fraunces, Georgia, serif; font-weight: 500; font-size: 
 }
 
 .tarjeta-deteccion .boton-confirmar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
   background: var(--go);
-  color: #fff;
+  color: #ffffff;
   border: 0;
   border-radius: 6px;
-  padding: 5px 12px;
-  font-size: 12.5px;
+  padding: 8px 16px;
+  font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tarjeta-deteccion .boton-confirmar {
+    color: #0C1116;
+  }
+}
+:root[data-theme="dark"] .tarjeta-deteccion .boton-confirmar {
+  color: #0C1116;
+}
+
 .tarjeta-deteccion .boton-cambiar {
-  background: transparent;
-  color: var(--muted);
-  border: 0;
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 /* ── Mapa de Google Maps 200m a la redonda ──────────────── */
@@ -574,4 +617,87 @@ h2.titulo { font-family: Fraunces, Georgia, serif; font-weight: 500; font-size: 
   border: 0;
   display: block;
 }
+
+.boton-ver-mapa {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  width: 100%;
+  background: var(--surface-2);
+  color: var(--ink);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.boton-ver-mapa:hover {
+  background: var(--surface-3);
+}
+
+.lista-candidatos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.instruccion-candidatos {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.opcion-candidato {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--ground);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  min-height: 44px;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.opcion-candidato:hover {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+.opcion-candidato-radio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.opcion-candidato.opcion-ninguno .opcion-candidato-radio {
+  background: var(--surface-3);
+  color: var(--muted);
+}
+
+.opcion-candidato-info {
+  flex: 1;
+}
+
+.opcion-candidato-info b {
+  display: block;
+  font-size: 14.5px;
+  color: var(--ink);
+}
+
 

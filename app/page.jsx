@@ -18,20 +18,101 @@ import Formulario from './formulario.jsx';
  * el informe de un prospecto, la baja— lleva `noindex`.
  */
 
-export const dynamic = 'force-dynamic';
-
-export const metadata = {
-  title: `${process.env.AGENCIA_NOMBRE || 'Lokigi'} — Auditoría gratuita de tu perfil en Google Maps`,
-  description:
-    'Reviso 25 puntos de control sobre el perfil público de tu negocio en Google Maps y te mando ' +
-    'un informe con lo que está bien, lo que falta y qué se hace con cada cosa.',
-  robots: 'index,follow',
-};
-
 const AGENCIA = process.env.AGENCIA_NOMBRE || 'Lokigi';
 const CIUDAD = process.env.AGENCIA_CIUDAD || '[TU CIUDAD]';
 const CORREO = process.env.EMAIL_OPERADOR || '[TU CORREO]';
 const PERSONA = process.env.AGENCIA_PERSONA || '[TU NOMBRE]';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://lokigi.com';
+
+const TITULO = `${AGENCIA} — Auditoría gratuita de tu perfil en Google Maps`;
+const DESCRIPCION =
+  'Reviso 25 puntos de control sobre el perfil público de tu negocio en Google Maps y te mando ' +
+  'un informe con lo que está bien, lo que falta y qué se hace con cada cosa.';
+
+export const metadata = {
+  metadataBase: new URL(APP_URL),
+  title: TITULO,
+  description: DESCRIPCION,
+  robots: 'index,follow',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: TITULO,
+    description: DESCRIPCION,
+    url: '/',
+    siteName: AGENCIA,
+    locale: 'es_AR',
+    type: 'website',
+    images: [
+      {
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: TITULO,
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITULO,
+    description: DESCRIPCION,
+    images: ['/opengraph-image'],
+  },
+};
+
+const FAQ_JSON_LD = [
+  {
+    pregunta: '¿De dónde saliste?',
+    respuesta:
+      'Tu perfil figura públicamente en Google Maps. Lo leí de ahí, igual que lo lee cualquier persona que busca tu rubro en tu zona. No compré ninguna base de datos ni te saqué el correo de ningún lado raro: está en tu propio sitio web.',
+  },
+  {
+    pregunta: '¿Me vas a llamar?',
+    respuesta:
+      'No. Te escribo como mucho cuatro veces, espaciadas, y si no contestás dejo de escribir solo. No hay call center, no hay número desconocido a las nueve de la noche.',
+  },
+  {
+    pregunta: '¿Cómo me saco esto de encima?',
+    respuesta:
+      'Respondés “BAJA” o hacés clic en el enlace del pie del correo. Se procesa al instante y es definitivo: tu dirección queda en una lista que el sistema consulta antes de cada envío, y ni yo puedo volver a agregarte.',
+  },
+  {
+    pregunta: '¿Quién está atrás?',
+    respuesta: `Una persona: ${PERSONA}, desde ${CIUDAD}. La auditoría la hace un programa, pero cada mensaje que te llega lo leí yo antes de que saliera.`,
+  },
+];
+
+const JSON_LD = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'ProfessionalService',
+    name: AGENCIA,
+    description: DESCRIPCION,
+    url: APP_URL,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: CIUDAD,
+      addressCountry: 'AR',
+    },
+    areaServed: {
+      '@type': 'AdministrativeArea',
+      name: CIUDAD,
+    },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQ_JSON_LD.map((item) => ({
+      '@type': 'Question',
+      name: item.pregunta,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.respuesta,
+      },
+    })),
+  },
+];
 
 /** El ejemplo del hero. Sale del perfil demo, con el motor real. */
 const DEMO = {
@@ -90,11 +171,16 @@ const PREGUNTAS = [
 export default function Landing() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+      />
+      <a href="#contenido" className="enlace-salto">Saltar al contenido principal</a>
       <header className="tapa">
         <div className="ancho" style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
           <Link href="/" className="marca"
                 style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'var(--ink)' }}>
-            <Pin size={24} />
+            <Pin size={24} color="var(--accent)" />
             <b style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 20, letterSpacing: '-.02em' }}>{AGENCIA}</b>
           </Link>
           <nav>
@@ -106,27 +192,27 @@ export default function Landing() {
         </div>
       </header>
 
-      <div className="ancho">
-        <section className="hero">
-          <div className="pila">
-            <span className="sello">Auditoría de Google Maps · {CIUDAD}</span>
-            <h1>Tu perfil de Google tiene un puntaje. Te digo cuál es, gratis.</h1>
-            <p className="entrada">
-              Reviso 25 puntos de control sobre el perfil público de tu negocio en Google Maps y te mando
-              un informe con lo que está bien, lo que falta y qué se hace con cada cosa.
-              {' '}<b>Sin compromiso y sin llamarte por teléfono.</b>
-            </p>
-            <div className="acciones-hero">
-              <a href="#pedir" className="cta">Pedir mi auditoría</a>
-              <Link href="/informe/ejemplo" className="cta calada">Ver un informe de ejemplo</Link>
-            </div>
-            <p style={{ fontSize: 14.5, color: 'var(--muted)' }}>
-              Tarda dos días. Si no te sirve, respondés “BAJA” y no te escribo nunca más.
-            </p>
-          </div>
+      <main id="contenido">
+        <div className="ancho">
+          <section className="hero">
+            <div className="pila">
+              <span className="sello">Auditoría de Google Maps · {CIUDAD}</span>
+              <h1>Tu perfil de Google tiene un puntaje. Te digo cuál es, gratis.</h1>
+              <p className="entrada">
+                Reviso 25 puntos de control sobre el perfil público de tu negocio en Google Maps y te mando
+                un informe con lo que está bien, lo que falta y qué se hace con cada cosa.
+                {' '}<b>Sin compromiso y sin llamarte por teléfono.</b>
+              </p>
 
-          <div className="puntaje">
-            <div className="rotulo">Auditoría en vivo · Muestra de control</div>
+              <Formulario compacto />
+
+              <div className="acciones-hero" style={{ marginTop: 4 }}>
+                <Link href="/informe/ejemplo" className="cta calada">Ver un informe de ejemplo</Link>
+              </div>
+            </div>
+
+            <div className="puntaje">
+              <div className="rotulo">Auditoría de ejemplo · Muestra de control</div>
             <div className="cifra">
               <span className="num">{DEMO.score}</span>
               <span style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 7 }}>
@@ -268,6 +354,7 @@ export default function Landing() {
           <Formulario />
         </div>
       </section>
+      </main>
 
       <footer className="pie">
         <div className="ancho">

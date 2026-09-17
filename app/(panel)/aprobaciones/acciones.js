@@ -49,8 +49,39 @@ export async function decidir(formData) {
     lead_id: fila.lead_id,
     decision: decision.toLowerCase(),
     razon: decision === 'APROBADO'
-      ? `Marcelo aprobó el paso ${fila.paso} para ${fila.negocio}${edito ? ' después de editarlo' : ' sin cambios'}.`
-      : `Marcelo rechazó el paso ${fila.paso} para ${fila.negocio}. Señal para ajustar el prompt del Redactor.`,
+      ? `Marcelo aprobó el paso ${fila.paso} para ${fila.negocio || fila.destinatario}${edito ? ' después de editarlo' : ' sin cambios'}.`
+      : `Marcelo rechazó el paso ${fila.paso} para ${fila.negocio || fila.destinatario}. Señal para ajustar el prompt del Redactor.`,
+  });
+
+  revalidatePath('/aprobaciones');
+  revalidatePath('/panel');
+}
+
+/**
+ * Revierte una aprobación previa que aún no ha sido enviada (enviado_en === null).
+ * Vuelve el estado a PENDIENTE y queda registrado en Bitácora.
+ */
+export async function deshacerAprobacion(formData) {
+  await requerirSesion();
+
+  const id = formData.get('id');
+  const fila = await uno('Aprobaciones', f => f.id === id, { sinCache: true });
+  if (!fila) throw new Error(`No existe la aprobación ${id}`);
+  if (fila.enviado_en != null) {
+    throw new Error('El mensaje ya fue enviado y no se puede deshacer.');
+  }
+
+  await actualizar('Aprobaciones', {
+    id,
+    decision: 'PENDIENTE',
+  });
+
+  await agregar('Bitacora', {
+    agente: 'humano',
+    accion: 'deshacer_aprobacion',
+    lead_id: fila.lead_id,
+    decision: 'pendiente',
+    razon: `Marcelo revirtió la aprobación del paso ${fila.paso} para ${fila.negocio || fila.destinatario} antes de su envío.`,
   });
 
   revalidatePath('/aprobaciones');

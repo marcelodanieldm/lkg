@@ -82,16 +82,19 @@ export default async function Baja({ searchParams }) {
  * confirmar algo se parece demasiado a un fraude. Decir de quién es, y
  * repetir por qué recibió el correo, es lo que la vuelve creíble.
  */
-const Marco = ({ children }) => (
-  <main style={{ maxWidth: 520, margin: '12vh auto' }}>
-    {children}
-    <p style={{
-      marginTop: 44, paddingTop: 18, borderTop: '1px solid var(--line)',
-      fontSize: 13, color: 'var(--muted)',
-    }}>
-      {process.env.AGENCIA_NOMBRE || 'Lokigi'} · Recibiste el correo porque el perfil de tu negocio
-      figura públicamente en Google Maps.
-      {process.env.EMAIL_OPERADOR && <> Cualquier duda, escribí a {process.env.EMAIL_OPERADOR}.</>}
-    </p>
-  </main>
-);
+const Marco = ({ children }) => {
+  const contacto = process.env.EMAIL_OPERADOR || process.env.GMAIL_FROM || '';
+  return (
+    <main style={{ maxWidth: 520, margin: '12vh auto' }}>
+      {children}
+      <p style={{
+        marginTop: 44, paddingTop: 18, borderTop: '1px solid var(--line)',
+        fontSize: 13, color: 'var(--muted)',
+      }}>
+        {process.env.AGENCIA_NOMBRE || 'Lokigi'} · Recibiste el correo porque el perfil de tu negocio
+        figura públicamente en Google Maps.
+        {contacto && <> Cualquier duda, escribí a {contacto}.</>}
+      </p>
+    </main>
+  );
+};
