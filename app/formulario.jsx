@@ -266,7 +266,7 @@ export default function Formulario({ compacto = false }) {
         {enviando ? 'Mandando…' : 'Pedir mi auditoría'}
       </button>
 
-      <p className="letra">Un solo correo, con el informe completo.</p>
+      <p className="letra">El mail de los resultados de auditoría llegará lo antes posible. Revisá la carpeta SPAM.</p>
 
       {/* Región viva de detección visual (ubicada debajo del botón para evitar saltos de maquetado) */}
       <div aria-live="polite" aria-atomic="true" style={{ marginTop: 16 }}>
