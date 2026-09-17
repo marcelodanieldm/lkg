@@ -188,6 +188,15 @@ test('PROPIEDAD CRÍTICA: /simulacro no importa el cliente de correo ni llama a 
   }
 });
 
+test('PROPIEDAD CRÍTICA: scripts/camino-feliz.js no importa el cliente de correo ni llama a enviar', () => {
+  const f = join(RAIZ, 'scripts/camino-feliz.js');
+  assert.ok(existsSync(f), 'no se encontró scripts/camino-feliz.js');
+  const texto = readFileSync(f, 'utf8');
+  const codigo = sinComentarios(texto);
+  assert.ok(!/integrations\/gmail/.test(texto), 'scripts/camino-feliz.js importa gmail.js');
+  assert.ok(!/\benviar\s*\(/.test(codigo), 'scripts/camino-feliz.js llama a enviar()');
+});
+
 test('PROPIEDAD CRÍTICA: solo la server action del panel puede reanudar el sistema', () => {
   // Los agentes y tareas pueden pausar (poner 'TRUE'), pero la reanudación
   // (poner 'FALSE') es decisión exclusiva de una persona desde el panel.
