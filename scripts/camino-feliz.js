@@ -197,22 +197,22 @@ async function main() {
   // -------------------------------------------------------------------
   // PASO 5: Generación de presupuestos (generarPresupuestos)
   // -------------------------------------------------------------------
-  let presupuesto = null;
+  let planes = null;
   try {
-    presupuesto = generarPresupuestos(auditoria);
-    if (!presupuesto || !Array.isArray(presupuesto.planes) || presupuesto.planes.length === 0) {
+    planes = generarPresupuestos(auditoria);
+    if (!Array.isArray(planes) || planes.length === 0) {
       throw new Error('generarPresupuestos() no devolvió planes válidos');
     }
 
     // Afirmar que los números provienen del motor de cotización
-    for (const plan of presupuesto.planes) {
+    for (const plan of planes) {
       if (typeof plan.setupUSD !== 'number' || typeof plan.mensualUSD !== 'number') {
         throw new Error(`El plan "${plan.nombre}" contiene valores no numéricos`);
       }
     }
 
-    const resumenPlanes = presupuesto.planes.map(p => `${p.nombre}: Setup USD ${p.setupUSD} / Mensual USD ${p.mensualUSD}`).join(' | ');
-    registrarPaso(5, 'Generación de presupuestos', true, `${presupuesto.planes.length} planes calculados: ${resumenPlanes}`);
+    const resumenPlanes = planes.map(p => `${p.nombre}: Setup USD ${p.setupUSD} / Mensual USD ${p.mensualUSD}`).join(' | ');
+    registrarPaso(5, 'Generación de presupuestos', true, `${planes.length} planes calculados: ${resumenPlanes}`);
   } catch (e) {
     registrarPaso(5, 'Generación de presupuestos', false, e.message || e);
   }
