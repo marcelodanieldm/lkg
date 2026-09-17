@@ -26,7 +26,7 @@ exception
   when duplicate_object then null;
 end $$;
 
-create table leads (
+create table if not exists leads (
   id              text primary key,              -- place_id de Google
   negocio         text not null,
   categoria       text,
@@ -66,10 +66,10 @@ create table leads (
   actualizado_en  timestamptz not null default now()
 );
 
-create index leads_etapa_idx     on leads (etapa) where opt_out = false;
-create index leads_proximo_idx   on leads (proximo_toque) where opt_out = false;
-create index leads_prioridad_idx on leads (prioridad desc);
-create index leads_email_idx     on leads (lower(email)) where email is not null;
+create index if not exists leads_etapa_idx     on leads (etapa) where opt_out = false;
+create index if not exists leads_proximo_idx   on leads (proximo_toque) where opt_out = false;
+create index if not exists leads_prioridad_idx on leads (prioridad desc);
+create index if not exists leads_email_idx     on leads (lower(email)) where email is not null;
 
 -- El disparador que hace irreversible la baja.
 create or replace function proteger_opt_out() returns trigger
@@ -86,6 +86,7 @@ begin
   return new;
 end $$;
 
+drop trigger if exists leads_proteger_opt_out on leads;
 create trigger leads_proteger_opt_out before update on leads
   for each row execute function proteger_opt_out();
 
@@ -93,9 +94,13 @@ create trigger leads_proteger_opt_out before update on leads
 -- La cola de aprobación
 -- ─────────────────────────────────────────────────────────────────────
 
-create type decision_aprobacion as enum ('PENDIENTE','APROBADO','RECHAZADO');
+do $$ begin
+  create type decision_aprobacion as enum ('PENDIENTE','APROBADO','RECHAZADO');
+exception
+  when duplicate_object then null;
+end $$;
 
-create table aprobaciones (
+create table if not exists aprobaciones (
   id            text primary key,                 -- huella del intento, idempotente
   lead_id       text references leads(id) on delete cascade,
   negocio       text,
@@ -115,9 +120,9 @@ create table aprobaciones (
   creado_en     timestamptz not null default now()
 );
 
-create index aprobaciones_pendientes_idx on aprobaciones (creado_en)
+create index if not exists aprobaciones_pendientes_idx on aprobaciones (creado_en)
   where decision = 'PENDIENTE';
-create index aprobaciones_por_enviar_idx on aprobaciones (decidido_en)
+create index if not exists aprobaciones_por_enviar_idx on aprobaciones (decidido_en)
   where decision = 'APROBADO' and enviado_en is null;
 
 -- Guarda el texto original la primera vez que se edita, para poder comparar
@@ -134,6 +139,7 @@ begin
   return new;
 end $$;
 
+drop trigger if exists aprobaciones_original on aprobaciones;
 create trigger aprobaciones_original before update on aprobaciones
   for each row execute function guardar_cuerpo_original();
 
@@ -141,7 +147,7 @@ create trigger aprobaciones_original before update on aprobaciones
 -- Registro inmutable
 -- ─────────────────────────────────────────────────────────────────────
 
-create table mensajes (
+create table if not exists mensajes (
   id            text primary key,
   lead_id       text references leads(id) on delete cascade,
   direccion     text not null check (direccion in ('saliente','entrante')),
@@ -158,19 +164,21 @@ create table mensajes (
   creado_en     timestamptz not null default now()
 );
 
-create index mensajes_lead_idx  on mensajes (lead_id, creado_en desc);
-create index mensajes_dia_idx   on mensajes (creado_en desc) where direccion = 'saliente';
-create index mensajes_paso_idx  on mensajes (lead_id, paso) where direccion = 'saliente';
+create index if not exists mensajes_lead_idx  on mensajes (lead_id, creado_en desc);
+create index if not exists mensajes_dia_idx   on mensajes (creado_en desc) where direccion = 'saliente';
+create index if not exists mensajes_paso_idx  on mensajes (lead_id, paso) where direccion = 'saliente';
 
 -- Append-only de verdad: no se puede editar ni borrar lo que ya se dijo.
-create rule mensajes_no_update as on update to mensajes do instead nothing;
-create rule mensajes_no_delete as on delete to mensajes do instead nothing;
+do $$ begin
+  create rule mensajes_no_update as on update to mensajes do instead nothing;
+  create rule mensajes_no_delete as on delete to mensajes do instead nothing;
+exception when duplicate_object then null; end $$;
 
 -- ─────────────────────────────────────────────────────────────────────
 -- Cumplimiento
 -- ─────────────────────────────────────────────────────────────────────
 
-create table supresiones (
+create table if not exists supresiones (
   valor     text not null,
   tipo      text not null check (tipo in ('email','telefono','dominio')),
   motivo    text,
@@ -179,16 +187,18 @@ create table supresiones (
   primary key (valor, tipo)
 );
 
-create index supresiones_valor_idx on supresiones (lower(valor));
+create index if not exists supresiones_valor_idx on supresiones (lower(valor));
 
 -- Tampoco se borra: quitar a alguien de la lista negra es volver a escribirle.
-create rule supresiones_no_delete as on delete to supresiones do instead nothing;
+do $$ begin
+  create rule supresiones_no_delete as on delete to supresiones do instead nothing;
+exception when duplicate_object then null; end $$;
 
 -- ─────────────────────────────────────────────────────────────────────
 -- El activo: el corpus
 -- ─────────────────────────────────────────────────────────────────────
 
-create table corpus (
+create table if not exists corpus (
   id              uuid primary key default gen_random_uuid(),
   place_id        text not null,
   categoria       text,
@@ -213,8 +223,8 @@ create table corpus (
 );
 
 -- El índice que hace barato el percentil.
-create index corpus_rubro_idx on corpus (lower(categoria), lower(ciudad), score);
-create index corpus_fecha_idx on corpus (creado_en desc);
+create index if not exists corpus_rubro_idx on corpus (lower(categoria), lower(ciudad), score);
+create index if not exists corpus_fecha_idx on corpus (creado_en desc);
 
 -- El percentil como función de base de datos: una sola ida y vuelta en vez de
 -- traerse el corpus entero a la función serverless.
@@ -247,7 +257,7 @@ begin
     return;
   end if;
 
-  -- Sin muestra suficiente se devuelve vacío. Un percentil calculado sobre
+  -- Sin muestra suficiente se devuelve vacío. Un percentil calculated sobre
   -- ocho perfiles es peor que no decir nada.
   return;
 end $$;
@@ -256,7 +266,7 @@ end $$;
 -- Clientes, tareas, operación
 -- ─────────────────────────────────────────────────────────────────────
 
-create table clientes (
+create table if not exists clientes (
   id             uuid primary key default gen_random_uuid(),
   lead_id        text not null unique references leads(id),
   plan           text not null check (plan in ('esencial','crecimiento','dominio','setup_unico')),
@@ -275,7 +285,7 @@ create table clientes (
   motivo_baja    text
 );
 
-create table tareas (
+create table if not exists tareas (
   id         uuid primary key default gen_random_uuid(),
   cliente_id uuid references clientes(id) on delete cascade,
   lead_id    text references leads(id) on delete cascade,
@@ -290,10 +300,10 @@ create table tareas (
   creado_en  timestamptz not null default now()
 );
 
-create index tareas_pendientes_idx on tareas (vence_en) where estado in ('pendiente','en_curso');
+create index if not exists tareas_pendientes_idx on tareas (vence_en) where estado in ('pendiente','en_curso');
 
 -- Config: lo que Marcelo cambia sin desplegar.
-create table config (
+create table if not exists config (
   clave text primary key,
   valor text,
   nota  text
@@ -314,9 +324,10 @@ insert into config (clave, valor, nota) values
   ('dia_inicio_calentamiento','','Fecha ISO del primer envío; la rampa se calcula desde acá'),
   ('pausa_general','FALSE','TRUE frena TODOS los envíos al instante'),
   ('auditorias_por_corrida','25',''),
-  ('nicho','gastronomía','Rubro de prospección');
+  ('nicho','gastronomía','Rubro de prospección')
+on conflict (clave) do nothing;
 
-create table metricas (
+create table if not exists metricas (
   fecha                 date primary key,
   auditorias            int default 0,
   enviados_email        int default 0,
@@ -332,7 +343,7 @@ create table metricas (
   mrr                   numeric(12,2) default 0
 );
 
-create table bitacora (
+create table if not exists bitacora (
   id        bigserial primary key,
   agente    text,
   accion    text,
@@ -344,19 +355,19 @@ create table bitacora (
   creado_en timestamptz not null default now()
 );
 
-create index bitacora_fecha_idx on bitacora (creado_en desc);
-create index bitacora_lead_idx  on bitacora (lead_id, creado_en desc);
-create index bitacora_dec_idx   on bitacora (decision, creado_en desc);
+create index if not exists bitacora_fecha_idx on bitacora (creado_en desc);
+create index if not exists bitacora_lead_idx  on bitacora (lead_id, creado_en desc);
+create index if not exists bitacora_dec_idx   on bitacora (decision, creado_en desc);
 
 -- ─────────────────────────────────────────────────────────────────────
 -- Vistas para el panel
 -- ─────────────────────────────────────────────────────────────────────
 
-create view v_embudo as
+create or replace view v_embudo as
 select etapa, count(*) as cantidad, round(avg(score), 1) as score_promedio
 from leads where opt_out = false group by etapa;
 
-create view v_cola_hoy as
+create or replace view v_cola_hoy as
 select l.id, l.negocio, l.etapa, l.toques, l.proximo_toque, l.email, l.score, l.percentil
 from leads l
 where l.opt_out = false
@@ -365,8 +376,9 @@ where l.opt_out = false
   and (l.proximo_toque is null or l.proximo_toque <= now())
 order by l.prioridad desc nulls last, l.proximo_toque asc nulls first;
 
-create view v_mrr as
+create or replace view v_mrr as
 select count(*) as clientes_activos,
        coalesce(sum(mensual), 0) as mrr,
        round(coalesce(avg(mensual), 0), 2) as ticket_promedio
 from clientes where baja_en is null;
+
