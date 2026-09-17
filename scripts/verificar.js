@@ -55,6 +55,8 @@ for (const f of [
   'supabase/migrations/002_rls_y_cron.sql',
   'supabase/migrations/003_workspace.sql',
   'supabase/migrations/004_solicitudes.sql',
+  'supabase/migrations/005_seguimiento.sql',
+  'supabase/migrations/006_place_id.sql',
 ]) {
   existsSync(join(RAIZ, f)) ? ok(f) : mal(`falta ${f}`);
 }
@@ -84,11 +86,20 @@ const OPCIONALES = {
   PUBSUB_TOKEN: 'solo si conectás el webhook de Gmail',
 };
 
+const esProd = process.env.NODE_ENV === 'production';
+const CRITICAS_PROD = new Set(['EMAIL_OPERADOR', 'AGENCIA_CIUDAD', 'AGENCIA_PERSONA']);
+
 for (const [k, ayuda] of Object.entries(REQUERIDAS)) {
   process.env[k] ? ok(k) : aviso(`${k} sin definir`, ayuda);
 }
 for (const [k, ayuda] of Object.entries(OPCIONALES)) {
-  if (!process.env[k]) nota(`${k} sin definir — ${ayuda}`);
+  if (process.env[k]) {
+    ok(k);
+  } else if (esProd && CRITICAS_PROD.has(k)) {
+    mal(`${k} sin definir en producción`, ayuda);
+  } else {
+    nota(`${k} sin definir — ${ayuda}`);
+  }
 }
 
 // El error que más caro sale: prospectar desde el dominio principal.

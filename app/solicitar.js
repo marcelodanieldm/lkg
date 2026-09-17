@@ -45,11 +45,14 @@ export async function pedirAuditoriaWeb(_estadoPrevio, formData) {
   const h = await headers();
   const ip = (h.get('x-forwarded-for') || '').split(',')[0].trim() || null;
 
+  const rawPlaceId = String(formData.get('placeId') || '').trim();
+  const placeId = (rawPlaceId && !rawPlaceId.startsWith('asistido-') && rawPlaceId.length > 5) ? rawPlaceId : null;
+
   const locInfo = [direccion, ciudad, pais].filter(Boolean).join(', ');
 
   let r;
   try {
-    r = await pedirAuditoria({ negocio, email, ciudad: locInfo || ciudad, ip });
+    r = await pedirAuditoria({ negocio, email, ciudad: locInfo || ciudad, ip, placeId });
   } catch (e) {
     await agregar('Bitacora', {
       agente: 'landing', accion: 'solicitud', decision: 'error',
@@ -156,45 +159,14 @@ export async function buscarNegocioWeb({ negocio, direccion, ciudad, pais = 'Arg
         };
       }
     }
-  } catch {
-    // Si la API key no está disponible o falla, caemos en la detección asistida
+  } catch (e) {
+    await agregar('Bitacora', {
+      agente: 'landing', accion: 'buscar_negocio', decision: 'error',
+      razon: `Error buscando negocio "${consulta}" en Places API: ${String(e.message || e).slice(0, 300)}`,
+    }).catch(() => {});
   }
 
-  const queryEmbed = encodeURIComponent(consulta);
-  const direccionCompleta = qDireccion 
-    ? [qDireccion, qCiudad, qPais].filter(Boolean).join(', ')
-    : [qNegocio, qCiudad, qPais].filter(Boolean).join(', ');
-
-  let catAi = catInferida;
-
-  try {
-    const { agenteAnalizadorPerfil } = await import('../lib/ia/gemini.js');
-    const aiData = await agenteAnalizadorPerfil({ negocio: qNegocio, direccion: qDireccion, ciudad: qCiudad, pais: qPais });
-    if (aiData && aiData.categoriaPrimariaLabel) {
-      catAi = aiData.categoriaPrimariaLabel;
-    }
-  } catch {
-    // Si Gemini no está disponible, se mantiene la inferencia de categoría básica
-  }
-
-  return {
-    ok: true,
-    fuente: 'asistido',
-    resultados: [
-      {
-        id: `asistido-${Date.now()}`,
-        nombre: qNegocio,
-        direccion: direccionCompleta,
-        categoria: catAi,
-        rating: null,
-        resenas: null,
-        mapsUrl: null,
-        lat: -31.4135,
-        lng: -64.1810,
-        mapEmbedUrl: `https://maps.google.com/maps?q=${queryEmbed}&z=17&output=embed`,
-      },
-    ],
-  };
+  return { ok: false, resultados: [] };
 }
 
 function inferirCategoriaTexto(texto) {

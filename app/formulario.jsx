@@ -69,6 +69,7 @@ export default function Formulario() {
 
   return (
     <form className="formulario" action={accion}>
+      <input type="hidden" name="placeId" value={confirmado && hallado ? hallado.id : ''} />
       <label htmlFor="negocio">Nombre del negocio o servicio</label>
       <input
         id="negocio"

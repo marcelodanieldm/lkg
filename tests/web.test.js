@@ -38,6 +38,20 @@ import { PERFILES_DEMO } from '../lib/core/demo.js';
  * cuando alguien clona el proyecto en Windows.
  */
 const RAIZ = fileURLToPath(new URL('..', import.meta.url));
+
+if (existsSync(join(RAIZ, '.env.local'))) {
+  const envText = readFileSync(join(RAIZ, '.env.local'), 'utf8');
+  for (const line of envText.split('\n')) {
+    const match = line.match(/^\s*([\w_]+)\s*=\s*(.*)\s*$/);
+    if (match && !process.env[match[1]]) {
+      let val = match[2].trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      process.env[match[1]] = val;
+    }
+  }
+}
 const leer = (p) => readFileSync(join(RAIZ, p), 'utf8');
 
 /**
@@ -280,6 +294,33 @@ test('la confirmación del formulario público muestra la dirección de correo o
   assert.ok(/al correo que dejaste/.test(formulario), 'formulario.jsx no incluye el fallback genérico');
   assert.ok(!/mailto:/.test(formulario.slice(formulario.indexOf("estado?.estado === 'listo'"))),
     'la pantalla de confirmación no debe usar enlaces mailto:');
+});
+
+test('el lugar verificado en la landing envía su placeId al servidor y descarta los asistidos', () => {
+  const formulario = leer('app/formulario.jsx');
+  assert.ok(/name="placeId"/.test(formulario), 'formulario.jsx no incluye el input oculto placeId');
+  assert.ok(/confirmado\s*&&\s*hallado/.test(formulario), 'formulario.jsx no condiciona el placeId a la confirmación');
+
+  const accion = sinComentarios(leer('app/solicitar.js'));
+  assert.ok(/placeId/.test(accion), 'solicitar.js no lee ni valida placeId');
+  assert.ok(/asistido-/.test(accion), 'solicitar.js no descarta los IDs asistidos/inventados');
+
+  const supabaseDb = sinComentarios(leer('lib/db/supabase.js'));
+  assert.ok(/p_place_id/.test(supabaseDb), 'supabase.js no envía p_place_id a la RPC pedir_auditoria');
+
+  const mig = leer('supabase/migrations/006_place_id.sql');
+  assert.ok(/alter table solicitudes\s+add column if not exists place_id/i.test(mig),
+    'la migración 006 no agrega la columna place_id');
+});
+
+test('la landing no contiene la cadena "[TU "', () => {
+  const ciudad = process.env.AGENCIA_CIUDAD || '[TU CIUDAD]';
+  const correo = process.env.EMAIL_OPERADOR || '[TU CORREO]';
+  const persona = process.env.AGENCIA_PERSONA || '[TU NOMBRE]';
+
+  assert.ok(!ciudad.includes('[TU '), 'AGENCIA_CIUDAD sin configurar en entorno (contiene [TU CIUDAD])');
+  assert.ok(!correo.includes('[TU '), 'EMAIL_OPERADOR sin configurar en entorno (contiene [TU CORREO])');
+  assert.ok(!persona.includes('[TU '), 'AGENCIA_PERSONA sin configurar en entorno (contiene [TU NOMBRE])');
 });
 
 test('los estilos del informe no se escapan a la página que lo contiene', async () => {
