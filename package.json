@@ -15,7 +15,8 @@
     "verificar": "node scripts/verificar.js",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
-    "auth": "node scripts/google-auth.js"
+    "auth": "node scripts/google-auth.js",
+    "humo": "node --env-file=.env.local scripts/humo-places.js"
   },
   "dependencies": {
     "next": "^15.5.0",
