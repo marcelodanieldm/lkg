@@ -59,8 +59,14 @@ export async function POST(req) {
       const data = await detallePlace(id, { conResenas: true });
       if (data) perfil = desdePlacesApi(data);
     }
-  } catch {
-    // Si Places API no responde, falta la API Key o falla la red, caemos a demo asistido
+  } catch (err) {
+    console.error('Error al consultar Places API en /api/auditar:', err?.message || err);
+    await db.agregar('Bitacora', {
+      agente: 'auditar_api',
+      accion: 'places_api',
+      decision: 'fallback',
+      razon: `Places API falló: ${String(err?.message || err).slice(0, 300)}`,
+    }).catch(() => {});
   }
 
   if (!perfil) {
