@@ -365,6 +365,7 @@ export default function Landing() {
           <span style={{ fontSize: 13.5, color: 'var(--muted)' }}>{CIUDAD}, Argentina · {CORREO}</span>
           <span className="der">
             <a href="#datos">De dónde saqué tus datos</a>
+            <Link href="/privacidad">Política de privacidad</Link>
             <Link href="/baja">Darse de baja</Link>
           </span>
         </div>
