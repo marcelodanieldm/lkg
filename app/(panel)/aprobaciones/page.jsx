@@ -6,8 +6,11 @@ import TarjetaAprobacion from './TarjetaAprobacion.jsx';
 export const dynamic = 'force-dynamic';
 
 const hace = (iso) => {
-  const h = (Date.now() - new Date(iso).getTime()) / 3_600_000;
-  if (h < 1) return `hace ${Math.round(h * 60)} min`;
+  if (!iso) return 'hace momentos';
+  const t = new Date(iso).getTime();
+  if (isNaN(t)) return 'hace momentos';
+  const h = (Date.now() - t) / 3_600_000;
+  if (h < 1) return `hace ${Math.max(1, Math.round(h * 60))} min`;
   if (h < 24) return `hace ${Math.round(h)} h`;
   const d = Math.round(h / 24);
   return `hace ${d} ${d === 1 ? 'día' : 'días'}`;
@@ -23,10 +26,12 @@ const hace = (iso) => {
  */
 export default async function Aprobaciones() {
   await requerirSesion();
-  const [pendientes, aprobadas] = await Promise.all([
-    pendientesDeAprobacion(),
-    aprobadasSinEnviar(),
+  const [resPend, resAprob] = await Promise.all([
+    pendientesDeAprobacion().catch(() => []),
+    aprobadasSinEnviar().catch(() => []),
   ]);
+  const pendientes = Array.isArray(resPend) ? resPend : [];
+  const aprobadas = Array.isArray(resAprob) ? resAprob : [];
 
   const minRestantesCron = 15 - (new Date().getMinutes() % 15);
 
