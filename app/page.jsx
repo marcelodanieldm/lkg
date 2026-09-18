@@ -196,7 +196,7 @@ export default function Landing() {
         <div className="ancho">
           <section className="hero">
             <div className="pila">
-              <span className="sello">Auditoría de Google Maps · {CIUDAD}</span>
+              <span className="sello">Auditoría de tu posicionamiento en Google Maps y GBP · {CIUDAD}</span>
               <h1>Tu perfil de Google tiene un puntaje. Te digo cuál es, gratis.</h1>
               <p className="entrada">
                 Reviso 25 puntos de control sobre el perfil público de tu negocio en Google Maps y te mando

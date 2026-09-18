@@ -71,7 +71,7 @@ export default async function Image() {
                 width: 'fit-content',
               }}
             >
-              Auditoría de Google Maps · {ciudad}
+              Auditoría de tu posicionamiento en Google Maps y GBP · {ciudad}
             </span>
             <h1
               style={{
