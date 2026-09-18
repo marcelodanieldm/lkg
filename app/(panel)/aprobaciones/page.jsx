@@ -115,7 +115,7 @@ export default async function Aprobaciones() {
           )}
 
           {pendientes.map(a => (
-            <TarjetaAprobacion key={a.id} a={a} hace={hace} />
+            <TarjetaAprobacion key={a.id} a={a} haceTexto={hace(a.creado_en)} />
           ))}
         </>
       )}

@@ -3,7 +3,18 @@
 import { useState } from 'react';
 import { decidir } from './acciones.js';
 
-export default function TarjetaAprobacion({ a, hace }) {
+const hace = (iso) => {
+  if (!iso) return 'hace momentos';
+  const t = new Date(iso).getTime();
+  if (isNaN(t)) return 'hace momentos';
+  const h = (Date.now() - t) / 3_600_000;
+  if (h < 1) return `hace ${Math.max(1, Math.round(h * 60))} min`;
+  if (h < 24) return `hace ${Math.round(h)} h`;
+  const d = Math.round(h / 24);
+  return `hace ${d} ${d === 1 ? 'día' : 'días'}`;
+};
+
+export default function TarjetaAprobacion({ a, haceTexto }) {
   const [paso, setPaso] = useState(null);
   const [asunto, setAsunto] = useState(a.asunto || '');
   const [cuerpo, setCuerpo] = useState(a.cuerpo || '');
@@ -14,7 +25,7 @@ export default function TarjetaAprobacion({ a, hace }) {
       <header>
         <h3>{a.negocio || a.destinatario}</h3>
         <span className="meta">
-          {a.canal} · paso {a.paso} · {hace(a.creado_en)}
+          {a.canal} · paso {a.paso} · {haceTexto || hace(a.creado_en)}
         </span>
       </header>
       <div className="meta" style={{ marginBottom: 6 }}>
