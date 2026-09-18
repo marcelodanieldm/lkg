@@ -28,6 +28,7 @@ try {
   console.log(`Score Origen: ${res.origen.score}/100 | Celda Geo: ${res.origen.celda}`);
   console.log(`Fecha Relevamiento: ${res.fechaRelevamiento} ${res.cache ? '(REUTILIZADO DESDE CACHÉ 30 DÍAS)' : '(NUEVO)'}`);
   console.log(`\n\x1b[36mLLAMADAS GASTADAS PLACES API:\x1b[0m ${res.llamadasGastadas}`);
+  console.log(`\x1b[32mAHORRADAS POR CORPUS O CACHÉ:\x1b[0m ${res.llamadasAhorradas || 0}`);
   console.log(`\x1b[36mCOSTO ESTIMADO:\x1b[0m USD $${res.costoUSD}`);
 
   const comp = res.comparacion;

@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS barridos (
   encontrados INT NOT NULL DEFAULT 0,
   auditados INT NOT NULL DEFAULT 0,
   llamadas_gastadas INT NOT NULL DEFAULT 0,
+  llamadas_ahorradas INT NOT NULL DEFAULT 0,
   costo_usd NUMERIC(10, 4) NOT NULL DEFAULT 0.0000,
   creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -24,6 +25,7 @@ CREATE TABLE IF NOT EXISTS barrido_competidores (
   nombre TEXT NOT NULL,
   distancia_m INT NOT NULL,
   anillo TEXT NOT NULL CHECK (anillo IN ('cercano', 'amplio')),
+  origen_dato TEXT NOT NULL CHECK (origen_dato IN ('corpus', 'busqueda', 'detalle')),
   score INT,
   auditado_json JSONB,
   creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()

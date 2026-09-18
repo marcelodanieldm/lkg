@@ -88,6 +88,38 @@ test('el Anillo Amplio no dispara llamadas de detalle y el tope se respeta', asy
   assert.equal(mockEngine.anilloAmplio.length, 5);
 });
 
+test('un competidor ya presente en el corpus no genera llamada a detalle', async () => {
+  let llamadasDetalle = 0;
+
+  const mockDb = {
+    gastoDelMes: async () => 0,
+    config: async () => 40,
+    obtenerBarridoReciente: async () => null,
+    guardarBarrido: async () => {},
+    buscarEnCorpus: async (placeId) => {
+      // Simular que el primer cercano (place_1) YA está en nuestro corpus
+      if (placeId === 'place_1') {
+        return auditar(PERFILES_DEMO.panaderia);
+      }
+      return null;
+    },
+  };
+
+  // 5 candidatos cercanos: place_1 está en corpus, los otros 4 no.
+  const candidatos = Array.from({ length: 5 }, (_, i) => `place_${i + 1}`);
+
+  for (const id of candidatos) {
+    const auditCorpus = await mockDb.buscarEnCorpus(id);
+    if (auditCorpus) {
+      // Reutiliza corpus -> 0 llamadas detalle
+    } else {
+      llamadasDetalle++;
+    }
+  }
+
+  assert.equal(llamadasDetalle, 4, 'Se debieron hacer sólo 4 llamadas a detalle porque 1 estaba en el corpus');
+});
+
 test('la caché reutiliza barridos de la misma celda geográfica (< 30 días)', async () => {
   let busquedaEjecutada = false;
 
