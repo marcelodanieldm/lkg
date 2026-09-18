@@ -136,6 +136,7 @@ Places API + sitio web + captura asistida
   entra al dominio ve una pantalla de acceso al CRM en vez de la página que le
   explica quién le escribió. Hay un test que lo impide.
 - **`/simulacro` no envía nada.** La pantalla `/simulacro` evalúa la cola en memoria sin importar `gmail.js` ni llamar a `enviar()`. La cuota diaria se acumula en un estado simulado local para que las filas sobrantes se muestren correctamente como `DIFERIDO`. Un test de `PROPIEDAD CRÍTICA` asegura que la pantalla no importe el cliente de correo.
+- **El disparo del barrido automático sale del navegador, nunca del servidor.** El servidor no dispara el barrido al renderizar `/informe/[id]`: los escáneres de enlaces de los antivirus corporativos visitan todas las URLs de un correo antes de entregarlo y agotarían la cuota de la API de Places procesando informes no leídos. Por eso el disparo sale del navegador mediante un script cliente solo al cumplir permanencia mínima ($\ge 10$ s) y scroll ($\ge 25\%$). La señal tampoco corre el barrido síncronamente: encola la solicitud como `pendiente` para que una tarea programada desacoplada la procese en segundo plano.
 
 ## Estilo
 

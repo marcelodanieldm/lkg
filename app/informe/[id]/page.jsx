@@ -19,8 +19,9 @@
  *    página se acuerde.
  */
 
-import { informeHTML, informePublico, registrarApertura } from '../../../lib/db/supabase.js';
+import { informeHTML, informePublico, registrarApertura, config } from '../../../lib/db/supabase.js';
 import { embutirInforme } from '../embutir.js';
+import VistoScript from './visto-script.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,9 +39,10 @@ export async function generateMetadata({ params }) {
 export default async function Informe({ params }) {
   const { id } = await params;
 
-  const [html, lead] = await Promise.all([
+  const [html, lead, segundosMinimos] = await Promise.all([
     informeHTML(id).catch(() => null),
     informePublico(id).catch(() => null),
+    config('barrido_segundos_minimos', 10),
   ]);
 
   if (!html) {
@@ -69,6 +71,7 @@ export default async function Informe({ params }) {
     <>
       <style dangerouslySetInnerHTML={{ __html: estilos }} />
       <div className={alcance} dangerouslySetInnerHTML={{ __html: cuerpo }} />
+      <VistoScript leadId={id} segundosMinimos={Number(segundosMinimos)} />
     </>
   );
 }

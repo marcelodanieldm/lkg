@@ -49,6 +49,54 @@ function autorizado(req) {
 const TAREAS = {
 
   /**
+   * Procesa la cola de barridos automáticos pendientes activados por vistas de informe.
+   * Desacoplado: ejecuta el barrido en segundo plano, guarda el resultado congelado,
+   * y avisa al operador. NADA sale al prospecto automáticamente.
+   */
+  async barrido_pendientes() {
+    const pausa = await db.config('pausa_general', false);
+    if (pausa) return { saltada: true, razon: 'pausa_general activa' };
+
+    const pendientes = await db.obtenerBarridosPendientes();
+    if (!pendientes || !pendientes.length) {
+      return { pendientes: 0, procesados: 0 };
+    }
+
+    let procesados = 0;
+
+    for (const item of pendientes) {
+      try {
+        const placeId = item.id;
+        const resBarrido = await ejecutarBarrido(placeId, { fuenteDatos: db });
+
+        if (resBarrido.cancelado) {
+          await db.marcarBarridoCompletado(placeId, null, 'cancelado');
+          continue;
+        }
+
+        await db.marcarBarridoCompletado(placeId, resBarrido.barridoId, 'completado');
+
+        await avisarOperador(
+          `Lokigi · ${item.negocio} abrió su informe y el barrido está listo`,
+          `${item.negocio} (${item.email || placeId}) abrió su informe de auditoría.\n\n` +
+          `El barrido de competidores en 4 km se procesó correctamente y quedó congelado (ID: ${resBarrido.barridoId || '—'}).\n\n` +
+          `NADA SALIÓ AUTOMÁTICAMENTE AL PROSPECTO. Podés revisar el bloque comparativo en ${APP()}/competencia y preparar un seguimiento si corresponde.`
+        );
+
+        procesados++;
+      } catch (e) {
+        await db.marcarBarridoCompletado(item.id, null, 'cancelado');
+        await db.agregar('Bitacora', {
+          agente: 'barrido_pendientes', accion: 'ejecutar_barrido', lead_id: item.id,
+          decision: 'error', razon: String(e?.message || e).slice(0, 400),
+        }).catch(() => {});
+      }
+    }
+
+    return { pendientes: pendientes.length, procesados };
+  },
+
+  /**
    * Re-audita clientes activos, realiza barrido de competidores, calcula evolución,
    * encola el informe de retención en aprobaciones y agrupa alertas para el operador.
    */

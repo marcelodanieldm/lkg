@@ -918,3 +918,83 @@ on conflict (clave) do nothing;
 
 select cron.schedule('lokigi-informe-cliente', '0 15 26 * *', $$ select llamar_tarea('informe_cliente') $$);
 
+-- ─────────────────────────────────────────────────────────────────────
+-- 009_barrido_automatico.sql — Barrido automático por vista de informe
+-- ─────────────────────────────────────────────────────────────────────
+
+alter table solicitudes
+  add column if not exists barrido_solicitado boolean default false,
+  add column if not exists barrido_estado text default 'ninguno' check (barrido_estado in ('ninguno', 'pendiente', 'completado', 'cancelado')),
+  add column if not exists barrido_id text references barridos(id) on delete set null,
+  add column if not exists informe_visto_en timestamptz;
+
+alter table leads
+  add column if not exists barrido_solicitado boolean default false,
+  add column if not exists barrido_estado text default 'ninguno' check (barrido_estado in ('ninguno', 'pendiente', 'completado', 'cancelado')),
+  add column if not exists barrido_id text references barridos(id) on delete set null,
+  add column if not exists informe_visto_en timestamptz;
+
+insert into config (clave, valor, nota) values
+  ('barrido_automatico', 'TRUE', 'Activa la generación automática de barridos al ver el informe'),
+  ('barrido_segundos_minimos', '10', 'Segundos mínimos de permanencia en el informe para activar el barrido'),
+  ('barrido_auto_origen', 'solicitudes', 'Origen de leads a auditar automáticamente (solicitudes | todos)'),
+  ('barrido_auto_tope_diario', '10', 'Tope diario de barridos automáticos por vistas de informe')
+on conflict (clave) do nothing;
+
+create or replace function registrar_visto_informe(p_lead_id text)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  v_auto boolean;
+  v_origen text;
+  v_tope int;
+  v_hoy int;
+  v_ya_procesado boolean;
+  v_es_solicitud boolean;
+begin
+  update leads set informe_visto_en = coalesce(informe_visto_en, now()) where id = p_lead_id;
+  update solicitudes set informe_visto_en = coalesce(informe_visto_en, now()) where lead_id = p_lead_id or id::text = p_lead_id;
+
+  select (valor = 'TRUE' or valor = 'true') into v_auto from config where clave = 'barrido_automatico';
+  if not coalesce(v_auto, false) then
+    return jsonb_build_object('ok', true, 'barrido', 'desactivado');
+  end if;
+
+  select coalesce(valor, 'solicitudes') into v_origen from config where clave = 'barrido_auto_origen';
+  select coalesce(valor::int, 10) into v_tope from config where clave = 'barrido_auto_tope_diario';
+
+  select exists(select 1 from solicitudes where lead_id = p_lead_id or id::text = p_lead_id) into v_es_solicitud;
+  if v_origen = 'solicitudes' and not v_es_solicitud then
+    return jsonb_build_object('ok', true, 'barrido', 'origen_no_aplicable');
+  end if;
+
+  select exists(
+    select 1 from leads where id = p_lead_id and barrido_solicitado = true
+    union all
+    select 1 from solicitudes where (lead_id = p_lead_id or id::text = p_lead_id) and barrido_solicitado = true
+  ) into v_ya_procesado;
+
+  if v_ya_procesado then
+    return jsonb_build_object('ok', true, 'barrido', 'ya_procesado');
+  end if;
+
+  select count(*) into v_hoy from solicitudes where barrido_solicitado = true and informe_visto_en >= current_date;
+  if v_hoy >= v_tope then
+    return jsonb_build_object('ok', true, 'barrido', 'tope_diario_alcanzado');
+  end if;
+
+  update solicitudes
+     set barrido_solicitado = true, barrido_estado = 'pendiente'
+   where lead_id = p_lead_id or id::text = p_lead_id;
+
+  update leads
+     set barrido_solicitado = true, barrido_estado = 'pendiente'
+   where id = p_lead_id;
+
+  return jsonb_build_object('ok', true, 'barrido', 'pendiente');
+end $$;
+
+revoke all on function registrar_visto_informe(text) from public;
+grant execute on function registrar_visto_informe(text) to anon, authenticated;
+
+
