@@ -95,7 +95,7 @@ export default function CompetenciaPage() {
 
     setMensajeEnc(null);
     try {
-      const r = await encolarCompetidoresSeleccionadosAction(aEncolar);
+      const r = await encolarCompetidoresSeleccionadosAction(aEncolar, barridoRes?.barridoId);
       setMensajeEnc(`✅ ${r.agregados} competidor(es) agregados a la cola de prospección.`);
       // Desmarcar seleccionados
       setSeleccionados({});
@@ -243,9 +243,9 @@ export default function CompetenciaPage() {
                 <th style={styles.th}>Seleccionar</th>
                 <th style={styles.th}>Nombre del Competidor</th>
                 <th style={styles.th}>Distancia</th>
-                <th style={styles.th}>Anillo</th>
-                <th style={styles.th}>Score</th>
-                <th style={styles.th}>Estado Lead</th>
+                <th style={styles.th}>Sitio Web</th>
+                <th style={styles.th}>Puntaje</th>
+                <th style={styles.th}>Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -262,17 +262,20 @@ export default function CompetenciaPage() {
                   <td style={styles.td}><strong>{c.nombre}</strong></td>
                   <td style={styles.td}>{c.distanciaMetros}m</td>
                   <td style={styles.td}>
-                    <span style={c.anillo === 'cercano' ? styles.badgeCercano : styles.badgeAmplio}>
-                      {c.anillo}
-                    </span>
+                    {c.dominio || c.sitioWeb ? (
+                      <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#334155' }}>
+                        {c.dominio || c.sitioWeb}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#94a3b8', fontSize: '12px' }}>Sin sitio</span>
+                    )}
                   </td>
                   <td style={styles.td}>{c.score ?? 'nd'} pts</td>
                   <td style={styles.td}>
-                    {c.yaEsLead ? (
-                      <span style={styles.badgeLead}>YA ES LEAD</span>
-                    ) : (
-                      <span style={styles.badgeDisponible}>DISPONIBLE</span>
-                    )}
+                    {c.estado === 'nuevo' && <span style={styles.badgeNuevo}>NUEVO</span>}
+                    {c.estado === 'ya_es_lead' && <span style={styles.badgeLead}>YA ES LEAD</span>}
+                    {c.estado === 'en_supresion' && <span style={styles.badgeSupresion}>EN SUPRESIÓN</span>}
+                    {c.estado === 'ya_te_escribio' && <span style={styles.badgeEscribio}>YA TE ESCRIBIÓ</span>}
                   </td>
                 </tr>
               ))}
@@ -284,7 +287,7 @@ export default function CompetenciaPage() {
             disabled={Object.values(seleccionados).filter(Boolean).length === 0}
             style={styles.btnEncolar}
           >
-            Agregar Seleccionados a la Cola ({Object.values(seleccionados).filter(Boolean).length})
+            Agregar los tildados a la cola de prospección ({Object.values(seleccionados).filter(Boolean).length})
           </button>
         </div>
       )}
@@ -538,6 +541,14 @@ const styles = {
     borderRadius: '4px',
     fontSize: '11px',
   },
+  badgeNuevo: {
+    background: '#dcfce7',
+    color: '#166534',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: '700',
+  },
   badgeLead: {
     background: '#fef3c7',
     color: '#92400e',
@@ -546,9 +557,17 @@ const styles = {
     fontSize: '11px',
     fontWeight: '600',
   },
-  badgeDisponible: {
-    background: '#dcfce7',
-    color: '#166534',
+  badgeSupresion: {
+    background: '#fef2f2',
+    color: '#991b1b',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: '600',
+  },
+  badgeEscribio: {
+    background: '#e0f2fe',
+    color: '#0369a1',
     padding: '2px 6px',
     borderRadius: '4px',
     fontSize: '11px',

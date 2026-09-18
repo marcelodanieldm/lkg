@@ -51,6 +51,15 @@ export default async function Solicitudes() {
             <b>Contacto:</b> {s.email}{s.telefono ? ` · Tel: ${s.telefono}` : ''}
           </div>
 
+          {s.motivo_busqueda && (
+            <div className="aviso-motivo-destacado" style={{ background: '#f0fdf4', border: '1px solid #86efac', padding: '10px 14px', borderRadius: 8, margin: '10px 0', color: '#166534' }}>
+              <b style={{ display: 'block', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#15803d', marginBottom: 2 }}>
+                💬 ¿Por qué busca esto? (Respuesta del prospecto):
+              </b>
+              <span style={{ fontSize: 14, fontWeight: 600 }}>"{s.motivo_busqueda}"</span>
+            </div>
+          )}
+
           {s.mensaje && (
             <div className="motivo">
               <b>Mensaje:</b> {s.mensaje}

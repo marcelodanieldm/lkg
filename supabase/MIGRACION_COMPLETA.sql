@@ -997,4 +997,42 @@ end $$;
 revoke all on function registrar_visto_informe(text) from public;
 grant execute on function registrar_visto_informe(text) to anon, authenticated;
 
+-- ─────────────────────────────────────────────────────────────────────
+-- 010_motivo_busqueda.sql — Pregunta opcional post-envío en la landing
+-- ─────────────────────────────────────────────────────────────────────
+alter table solicitudes
+  add column if not exists motivo_busqueda text,
+  add column if not exists motivo_busqueda_at timestamptz;
+
+create or replace view v_solicitudes_nuevas as
+select s.id, s.negocio, s.email, s.ciudad, s.telefono, s.mensaje, s.nota,
+       s.motivo_busqueda, s.motivo_busqueda_at,
+       to_char(s.creado_en at time zone 'America/Argentina/Buenos_Aires', 'YYYY-MM-DD HH24:MI') as cuando,
+       s.creado_en
+from solicitudes s
+where s.estado = 'nueva'
+order by s.creado_en desc;
+
+create or replace function guardar_motivo_busqueda(
+  p_solicitud_id uuid,
+  p_motivo text
+) returns jsonb
+language plpgsql security definer set search_path = public as $$
+begin
+  if p_solicitud_id is null then
+    return jsonb_build_object('ok', false, 'error', 'id_nulo');
+  end if;
+
+  update solicitudes
+     set motivo_busqueda = left(btrim(coalesce(p_motivo, '')), 2000),
+         motivo_busqueda_at = now()
+   where id = p_solicitud_id;
+
+  return jsonb_build_object('ok', true);
+end $$;
+
+revoke all on function guardar_motivo_busqueda(uuid, text) from public;
+grant execute on function guardar_motivo_busqueda(uuid, text) to anon, authenticated;
+
+
 

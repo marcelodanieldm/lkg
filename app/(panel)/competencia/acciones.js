@@ -93,53 +93,133 @@ export async function ejecutarBarridoAction(placeId, { radioMetros = 4000, forza
 
 /**
  * Obtiene la lista de competidores de un barrido con sus estados de supresión y leads existentes.
+ * Orden por defecto: los 'nuevo' con peor puntaje (score ascendente) primero.
  */
 export async function obtenerEstadoProspeccionCompetidoresAction(barridoId) {
   const completo = await db.obtenerBarridoCompleto(barridoId);
   if (!completo || !completo.competidores) return [];
 
-  // Traer leads existentes para comparar
-  const setLeads = await db.obtenerPlaceIdsLeads().catch(() => new Set());
+  // Traer conjuntos de control en paralelo
+  const [leadsRes, solicitudesRes, setSupresiones] = await Promise.all([
+    db.obtenerPlaceIdsLeads().catch(() => ({ setPlaceIds: new Set(), setEmail: new Set() })),
+    db.obtenerPlaceIdsSolicitudes().catch(() => ({ setPlaceIds: new Set(), setEmail: new Set() })),
+    db.obtenerSupresiones().catch(() => new Set()),
+  ]);
 
-  return completo.competidores.map(c => {
-    const yaEsLead = setLeads.has(c.place_id);
+  const listaMapped = completo.competidores.map(c => {
+    const auditMeta = c.auditado_json?.meta || {};
+    const perfil = c.auditado_json?.perfil || {};
+    const sitioWeb = auditMeta.sitioWeb || perfil.sitioWeb || null;
+    const dominio = sitioWeb ? sitioWeb.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').toLowerCase() : null;
+
+    const enSupresion = setSupresiones.has(c.place_id) || (dominio && setSupresiones.has(dominio));
+    const yaEsLead = leadsRes.setPlaceIds.has(c.place_id);
+    const yaTeEscribio = solicitudesRes.setPlaceIds.has(c.place_id);
+
+    let estado = 'nuevo';
+    let estadoLabel = 'nuevo';
+    let disponible = true;
+
+    if (enSupresion) {
+      estado = 'en_supresion';
+      estadoLabel = 'en supresión';
+      disponible = false;
+    } else if (yaEsLead) {
+      estado = 'ya_es_lead';
+      estadoLabel = 'ya es lead';
+      disponible = false;
+    } else if (yaTeEscribio) {
+      estado = 'ya_te_escribio';
+      estadoLabel = 'ya te escribió';
+      disponible = false;
+    }
+
     return {
       placeId: c.place_id,
       nombre: c.nombre,
       distanciaMetros: c.distancia_m,
       anillo: c.anillo,
-      score: c.score,
+      score: c.score ?? null,
+      sitioWeb,
+      dominio,
+      estado,
+      estadoLabel,
       yaEsLead,
-      enSupresion: false, // Los competidores no tienen email público hasta ser prospectados
-      disponible: !yaEsLead,
+      enSupresion,
+      yaTeEscribio,
+      disponible,
     };
+  });
+
+  // ORDEN POR DEFECTO: 'nuevo' primero, ordenados por peor puntaje (score ASC: 0..100)
+  return listaMapped.sort((a, b) => {
+    if (a.estado === 'nuevo' && b.estado !== 'nuevo') return -1;
+    if (a.estado !== 'nuevo' && b.estado === 'nuevo') return 1;
+    if (a.estado === 'nuevo' && b.estado === 'nuevo') {
+      const scoreA = a.score ?? 999;
+      const scoreB = b.score ?? 999;
+      return scoreA - scoreB;
+    }
+    return a.distanciaMetros - b.distanciaMetros;
   });
 }
 
 /**
  * Encola MANUALMENTE y de forma explícita los competidores tildados a la cola de solicitudes.
- * NUNCA AUTOMÁTICO: sólo procesa el array de placeIds seleccionados por el usuario.
+ * AL MOMENTO DE ENCOLAR: Re-revisa supresión, no duplica leads/solicitudes y registra en Bitacora.
+ * NUNCA AUTOMÁTICO.
  */
-export async function encolarCompetidoresSeleccionadosAction(seleccionados = []) {
+export async function encolarCompetidoresSeleccionadosAction(seleccionados = [], barridoId = null) {
   if (!Array.isArray(seleccionados) || seleccionados.length === 0) {
     throw new Error('Debe seleccionar al menos un competidor para agregar a la cola.');
   }
+
+  // Re-evaluar supresiones y duplicados en el momento exacto del envío
+  const [leadsRes, solicitudesRes, setSupresiones] = await Promise.all([
+    db.obtenerPlaceIdsLeads().catch(() => ({ setPlaceIds: new Set(), setEmail: new Set() })),
+    db.obtenerPlaceIdsSolicitudes().catch(() => ({ setPlaceIds: new Set(), setEmail: new Set() })),
+    db.obtenerSupresiones().catch(() => new Set()),
+  ]);
 
   let agregados = 0;
   for (const item of seleccionados) {
     if (!item.placeId || !item.nombre) continue;
 
-    // Se agrega a solicitudes (no a leads directo, manteniendo la invariante)
+    const sitioWeb = item.sitioWeb || null;
+    const dominio = sitioWeb ? sitioWeb.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').toLowerCase() : null;
+
+    // Verificar supresión
+    if (setSupresiones.has(item.placeId) || (dominio && setSupresiones.has(dominio))) {
+      continue;
+    }
+
+    // Verificar si ya existe en leads o solicitudes
+    if (leadsRes.setPlaceIds.has(item.placeId) || solicitudesRes.setPlaceIds.has(item.placeId)) {
+      continue;
+    }
+
+    // Se agrega a solicitudes (no a leads directo, manteniendo la invariante de migración 004)
     await db.pedirAuditoria({
       negocio: item.nombre,
       email: item.email || `${item.placeId}@prospeccion.local`,
       ciudad: item.ciudad || null,
       telefono: item.telefono || null,
-      mensaje: `Origen: Barrido de competidores (Manual por Operador)`,
+      mensaje: `Origen: Barrido de competidores (${barridoId || 'Manual por Operador'})`,
       placeId: item.placeId,
     }).catch(() => {});
     agregados++;
   }
 
+  // Registrar en Bitacora
+  if (agregados > 0) {
+    await db.agregar('Bitacora', {
+      agente: 'operador',
+      accion: 'encolar_prospeccion_barrido',
+      nota: `Encolados ${agregados} competidor(es) desde el barrido ${barridoId || 'manual'}`,
+      motivo: 'Selección manual en mapa de prospección',
+    }).catch(() => {});
+  }
+
   return { agregados };
 }
+

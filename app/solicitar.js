@@ -1,7 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
-import { pedirAuditoria, config, agregar } from '../lib/db/supabase.js';
+import { pedirAuditoria, config, agregar, guardarMotivoBusqueda } from '../lib/db/supabase.js';
 
 /**
  * Alguien pidió su auditoría desde la landing.
@@ -79,6 +79,9 @@ export async function pedirAuditoriaWeb(_estadoPrevio, formData) {
 
   await avisar({ negocio, email, ciudad: locInfo || ciudad, dadoDeBaja: r?.dado_de_baja });
 
+  if (r?.id) {
+    return { estado: 'listo', email, idSolicitud: r.id };
+  }
   return { estado: 'listo', email };
 }
 
@@ -189,4 +192,18 @@ function inferirCategoriaTexto(texto) {
   if (t.includes('hotel') || t.includes('hosped')) return 'Hotel / Alojamiento';
   if (t.includes('clinica') || t.includes('medic') || t.includes('consultor')) return 'Centro Médico / Salud';
   return 'Comercio / Servicio Local';
+}
+
+/**
+ * Guarda la respuesta a la pregunta opcional post-envío.
+ *
+ * IMPORTANTE: No dispara ningún correo, no crea leads ni revierte bajas.
+ * Únicamente adjunta el texto a la solicitud existente en la base de datos.
+ */
+export async function guardarMotivoBusquedaWeb(solicitudId, motivo) {
+  if (!solicitudId || !motivo || !String(motivo).trim()) {
+    return { ok: false };
+  }
+  const res = await guardarMotivoBusqueda(solicitudId, String(motivo).trim());
+  return res || { ok: true };
 }
