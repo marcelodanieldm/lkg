@@ -366,6 +366,7 @@ export default function Landing() {
           <span className="der">
             <a href="#datos">De dónde saqué tus datos</a>
             <Link href="/privacidad">Política de privacidad</Link>
+            <Link href="/condiciones">Condiciones del servicio</Link>
             <Link href="/baja">Darse de baja</Link>
           </span>
         </div>
