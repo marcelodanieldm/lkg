@@ -39,6 +39,7 @@ export async function decidir(formData) {
     decision,
     cuerpo: cuerpo ?? fila.cuerpo,
     ...(asunto ? { asunto } : {}),
+    decidido_en: new Date().toISOString(),
   });
 
   const edito = (cuerpo ?? fila.cuerpo) !== fila.cuerpo;

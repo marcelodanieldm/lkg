@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { decidir } from './acciones.js';
 
 export default function TarjetaAprobacion({ a, hace }) {
-  const [confirmando, setConfirmando] = useState(false);
+  const [paso, setPaso] = useState(null);
   const [asunto, setAsunto] = useState(a.asunto || '');
   const [cuerpo, setCuerpo] = useState(a.cuerpo || '');
+  const [cargando, setCargando] = useState(false);
 
   return (
     <article className="aprob">
@@ -25,8 +26,9 @@ export default function TarjetaAprobacion({ a, hace }) {
         {a.advertencias && <><br /><b>Linter:</b> {a.advertencias}</>}
       </div>
 
-      <form action={decidir}>
+      <form action={decidir} onSubmit={() => setCargando(true)}>
         <input type="hidden" name="id" value={a.id} />
+        {paso && <input type="hidden" name="decision" value={paso} />}
 
         {a.asunto !== undefined && (
           <div className="asunto">
@@ -35,6 +37,7 @@ export default function TarjetaAprobacion({ a, hace }) {
               name="asunto"
               value={asunto}
               onChange={(e) => setAsunto(e.target.value)}
+              disabled={cargando}
               style={{
                 font: 'inherit',
                 border: '1px solid var(--line-2)',
@@ -52,10 +55,11 @@ export default function TarjetaAprobacion({ a, hace }) {
           name="cuerpo"
           value={cuerpo}
           onChange={(e) => setCuerpo(e.target.value)}
+          disabled={cargando}
           spellCheck="true"
         />
 
-        {confirmando ? (
+        {paso === 'APROBADO' && (
           <div className="aviso go" style={{ margin: '14px 0', borderLeftWidth: 4 }}>
             <span className="lab">Paso 2 de 2 · Confirmar destinatario y envío</span>
             <p style={{ margin: '8px 0 4px', fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>
@@ -67,40 +71,69 @@ export default function TarjetaAprobacion({ a, hace }) {
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
               <button
                 className="aprobar"
-                name="decision"
-                value="APROBADO"
                 type="submit"
+                disabled={cargando}
                 style={{ minHeight: 44, padding: '10px 20px', fontWeight: 700 }}
               >
-                ✓ Sí, confirmar envío a {a.destinatario}
+                {cargando ? 'Guardando...' : `✓ Sí, confirmar envío a ${a.destinatario}`}
               </button>
               <button
                 type="button"
                 className="sec"
+                disabled={cargando}
                 style={{ minHeight: 44, padding: '10px 16px' }}
-                onClick={() => setConfirmando(false)}
+                onClick={() => setPaso(null)}
               >
                 Cancelar / Volver a editar
               </button>
             </div>
           </div>
-        ) : (
+        )}
+
+        {paso === 'RECHAZADO' && (
+          <div className="aviso stop" style={{ margin: '14px 0', borderLeftWidth: 4 }}>
+            <span className="lab">Confirmar rechazo</span>
+            <p style={{ margin: '8px 0 14px', fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>
+              ¿Estás seguro de que querés descartar este mensaje para <span style={{ color: 'var(--accent)' }}>{a.destinatario}</span>?
+            </p>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <button
+                className="rechazar"
+                type="submit"
+                disabled={cargando}
+                style={{ minHeight: 44, padding: '10px 20px', fontWeight: 700 }}
+              >
+                {cargando ? 'Guardando...' : 'Sí, rechazar este mensaje'}
+              </button>
+              <button
+                type="button"
+                className="sec"
+                disabled={cargando}
+                style={{ minHeight: 44, padding: '10px 16px' }}
+                onClick={() => setPaso(null)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {paso === null && (
           <div className="acciones" style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 14 }}>
             <button
               type="button"
               className="aprobar"
               style={{ minHeight: 44, padding: '10px 20px', fontWeight: 600 }}
-              onClick={() => setConfirmando(true)}
+              onClick={() => setPaso('APROBADO')}
             >
               Aprobar y revisar envío →
             </button>
 
             <button
+              type="button"
               className="rechazar"
-              name="decision"
-              value="RECHAZADO"
-              type="submit"
               style={{ minHeight: 44, padding: '10px 18px', marginLeft: 'auto' }}
+              onClick={() => setPaso('RECHAZADO')}
             >
               Rechazar
             </button>
