@@ -164,9 +164,10 @@ export default function CompetenciaPage() {
       {/* Panel de Pre-flight de Costos */}
       {estimacion && (
         <div style={styles.preflightCard}>
-          <h2 style={styles.preflightTitulo}>📋 Estimación Previa del Barrido</h2>
+          <h2 style={styles.preflightTitulo}>📋 Estimación Previa del Barrido (Pre-flight Obligatorio)</h2>
           <div style={styles.preflightGrid}>
             <div><strong>Negocio Origen:</strong> {estimacion.nombre} ({estimacion.ciudad})</div>
+            <div><strong>Vecinos en Corpus Propio:</strong> {estimacion.vecinosEnCorpusCount} auditorías almacenadas previamente</div>
             <div><strong>Celda Geográfica:</strong> {estimacion.celda}</div>
             <div><strong>Categoría Primaria:</strong> {estimacion.categoria}</div>
             <div>
@@ -212,7 +213,7 @@ export default function CompetenciaPage() {
         <div style={styles.exportCard}>
           <h3 style={styles.exportTitulo}>📊 Exportar Datos a Power BI / Excel (UTF-8 con BOM)</h3>
           <p style={styles.exportDesc}>
-            Formato analítico largo (1 fila por par competidor-regla). Preservación total de acentos y caracteres en español.
+            Instrucciones para Power BI: <strong>Obtener datos › Web › Pegar URL del CSV</strong>. Formato analítico largo (1 fila por competidor y por regla). Preservación total de acentos y caracteres en español.
           </p>
           <div style={styles.exportInputRow}>
             <input type="text" readOnly value={exportUrlAbs} style={styles.exportInput} />

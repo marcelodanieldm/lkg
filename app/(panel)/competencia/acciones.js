@@ -33,9 +33,13 @@ export async function estimarBarridoAction(placeId, radioMetros = 4000) {
   const celda = generarCeldaGeo(lat, lng);
   const categoria = origenPerfil.categoriaPrimariaLabel || origenPerfil.categoriaPrimaria || 'general';
 
-  // 2. Verificación de Caché de 30 días
-  const reciente = await db.obtenerBarridoReciente(celda, categoria).catch(() => null);
+  // 2. Verificación de Caché de 30 días y Corpus propio
+  const [reciente, vecinosCorpus] = await Promise.all([
+    db.obtenerBarridoReciente(celda, categoria).catch(() => null),
+    db.buscar('Corpus', c => c.categoria === categoria || c.ciudad === origenPerfil.zona).catch(() => []),
+  ]);
   const tieneCache = !!reciente;
+  const vecinosEnCorpusCount = (vecinosCorpus || []).length;
 
   // 3. Estimación de consumo
   // Búsqueda (1 a 2 llamadas Text Search Pro)
@@ -60,6 +64,7 @@ export async function estimarBarridoAction(placeId, radioMetros = 4000) {
     celda,
     categoria,
     tieneCache,
+    vecinosEnCorpusCount,
     barridoCacheId: reciente?.id || null,
     fechaCache: reciente?.fecha || null,
     estimacion: {

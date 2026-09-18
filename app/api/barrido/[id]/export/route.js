@@ -11,6 +11,7 @@
  */
 
 import * as db from '../../../../../lib/db/supabase.js';
+import { REGLAS } from '../../../../../lib/core/rubric.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,10 @@ export async function GET(req, { params }) {
 
   const { barrido, competidores = [], reglas = [] } = completo;
 
-  // Mapa de competidores por place_id para cruzar datos sin incluir datos de contacto
+  // Mapa de reglas por ID para enriquecer el CSV con titulo, dimensión y peso
+  const mapaReglasDef = new Map(REGLAS.map(r => [r.id, r]));
+
+  // Mapa de competidores por place_id para cruzar datos sin incluir datos de contacto (email/telefono)
   const mapaComp = new Map();
   for (const c of competidores) {
     mapaComp.set(c.place_id, {
@@ -56,29 +60,33 @@ export async function GET(req, { params }) {
     });
   }
 
+  const origenComp = mapaComp.get(barrido.origen_place_id);
+  const origenNombre = barrido.origen_nombre || origenComp?.nombre || 'Origen';
+
   // Armar lista plana de filas par (competidor - regla)
   const filas = reglas.map(r => {
     const comp = mapaComp.get(r.place_id) || {};
+    const def = mapaReglasDef.get(r.regla_id) || {};
     return {
       barrido_id: barrido.id,
-      origen_place_id: barrido.origen_place_id,
-      celda: barrido.celda,
-      categoria: barrido.categoria,
       fecha: barrido.fecha,
+      origen_place_id: barrido.origen_place_id,
+      origen_nombre: origenNombre,
       place_id: r.place_id,
       nombre_competidor: comp.nombre || 'Desconocido',
       distancia_m: comp.distancia_m ?? 0,
       anillo: comp.anillo || 'amplio',
-      origen_dato: comp.origen_dato || 'busqueda',
-      score_competidor: comp.score ?? null,
       regla_id: r.regla_id,
-      estado_regla: r.estado,
+      nombre_regla: def.titulo || r.regla_id,
+      dimension: def.dimension || 'general',
+      peso: def.peso ?? 0,
+      estado: r.estado,
       ratio: r.ratio,
       puntos: r.puntos,
     };
   });
 
-  if (format === 'json') {
+  if (format === 'json' || req.headers.get('accept')?.includes('application/json')) {
     return new Response(JSON.stringify({ barrido, filas }, null, 2), {
       status: 200,
       headers: {
@@ -90,27 +98,28 @@ export async function GET(req, { params }) {
 
   // Formato CSV UTF-8 CON BOM (\uFEFF)
   const cabeceras = [
-    'barrido_id', 'origen_place_id', 'celda', 'categoria', 'fecha',
-    'place_id', 'nombre_competidor', 'distancia_m', 'anillo', 'origen_dato',
-    'score_competidor', 'regla_id', 'estado_regla', 'ratio', 'puntos',
+    'barrido_id', 'fecha', 'origen_place_id', 'origen_nombre',
+    'place_id', 'nombre_competidor', 'distancia_m', 'anillo',
+    'regla_id', 'nombre_regla', 'dimension', 'peso',
+    'estado', 'ratio', 'puntos',
   ];
 
   const lineasCSV = [
     cabeceras.map(escapeCSV).join(','),
     ...filas.map(f => [
       escapeCSV(f.barrido_id),
-      escapeCSV(f.origen_place_id),
-      escapeCSV(f.celda),
-      escapeCSV(f.categoria),
       escapeCSV(f.fecha),
+      escapeCSV(f.origen_place_id),
+      escapeCSV(f.origen_nombre),
       escapeCSV(f.place_id),
       escapeCSV(f.nombre_competidor),
       f.distancia_m,
       escapeCSV(f.anillo),
-      escapeCSV(f.origen_dato),
-      f.score_competidor ?? '',
       escapeCSV(f.regla_id),
-      escapeCSV(f.estado_regla),
+      escapeCSV(f.nombre_regla),
+      escapeCSV(f.dimension),
+      f.peso,
+      escapeCSV(f.estado),
       f.ratio ?? '',
       f.puntos ?? '',
     ].join(',')),

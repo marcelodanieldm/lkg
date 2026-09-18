@@ -170,6 +170,68 @@ test('PROPIEDAD CRÍTICA: el barrido NUNCA escribe en la tabla Leads ni crea lea
   }
 });
 
+test('los dos párrafos de análisis son 100% deterministas y respetan el tope de 90 palabras cada uno', () => {
+  const propia = auditar(PERFILES_DEMO.panaderia);
+  const compList = Array.from({ length: 8 }, (_, i) => ({
+    placeId: `c_${i + 1}`,
+    nombre: `Veterinaria ${i + 1}`,
+    distanciaMetros: (i + 1) * 300,
+    anillo: i < 5 ? 'cercano' : 'amplio',
+    auditoria: auditar(PERFILES_DEMO.estudio),
+  }));
+
+  const res1 = compararPorRegla(propia, compList);
+  const res2 = compararPorRegla(propia, compList);
+
+  assert.ok(res1.parrafos.parrafo1, 'El párrafo 1 debe existir');
+  assert.ok(res1.parrafos.parrafo2, 'El párrafo 2 debe existir');
+
+  // Identidad determinista entre corridas
+  assert.equal(res1.parrafos.parrafo1, res2.parrafos.parrafo1, 'Dos corridas sobre los mismos datos deben producir texto idéntico en párrafo 1');
+  assert.equal(res1.parrafos.parrafo2, res2.parrafos.parrafo2, 'Dos corridas sobre los mismos datos deben producir texto idéntico en párrafo 2');
+
+  // Conteo de palabras <= 90
+  const contarPalabras = (txt) => txt.trim().split(/\s+/).filter(Boolean).length;
+  const palabrasP1 = contarPalabras(res1.parrafos.parrafo1);
+  const palabrasP2 = contarPalabras(res1.parrafos.parrafo2);
+
+  assert.ok(palabrasP1 <= 90, `El párrafo 1 no debe exceder 90 palabras (tiene ${palabrasP1})`);
+  assert.ok(palabrasP2 <= 90, `El párrafo 2 no debe exceder 90 palabras (tiene ${palabrasP2})`);
+
+  // Párrafo 2 debe incluir el aviso explícito de que la posición recalculated es DENTRO de la comparación
+  assert.ok(res1.parrafos.parrafo2.includes('en Google nadie puede prometerte un puesto'), 'El párrafo 2 debe contener la exención de responsabilidad explicita');
+});
+
+test('con menos de 5 competidores sale la advertencia de base insuficiente', () => {
+  const propia = auditar(PERFILES_DEMO.panaderia);
+  const pocosComp = [
+    { placeId: 'c1', nombre: 'Comp 1', distanciaMetros: 200, anillo: 'cercano', auditoria: auditar(PERFILES_DEMO.estudio) },
+    { placeId: 'c2', nombre: 'Comp 2', distanciaMetros: 500, anillo: 'cercano', auditoria: auditar(PERFILES_DEMO.estudio) },
+  ];
+
+  const res = compararPorRegla(propia, pocosComp);
+
+  assert.equal(res.baseSuficiente, false);
+  assert.ok(res.razon.includes('insuficiente'), 'Debe comunicar que la base es insuficiente');
+});
+
+test('el linter bloquea cualquier redacción que prometa posición en Google o buscadores', async () => {
+  const { lintear } = await import('../lib/guardrails/guard.js');
+
+  const intentosProhibidos = [
+    { cuerpo: 'Te aseguramos el 1er puesto en Google Maps para tu rubro.', canal: 'email', asunto: 'Asunto de prueba para linter' },
+    { cuerpo: 'Te posicionaremos en el primer lugar de las búsquedas locales.', canal: 'email', asunto: 'Asunto de prueba para linter' },
+    { cuerpo: 'Quedarás 1º en Google cuando los clientes busquen tu servicio.', canal: 'email', asunto: 'Asunto de prueba para linter' },
+    { cuerpo: 'Podemos prometerte un puesto en Google dentro de 30 días.', canal: 'email', asunto: 'Asunto de prueba para linter' },
+  ];
+
+  for (const i of intentosProhibidos) {
+    const res = lintear(i);
+    assert.equal(res.limpio, false, `El linter debió bloquear: "${i.cuerpo}"`);
+    assert.ok(res.errores.some(e => e.includes('promesa de posición')), 'El error debe indicar promesa de posición');
+  }
+});
+
 // Auxiliares de prueba para simular ejecuciones aisladas
 async function test_ejecutarBarridoConMocks({ origenPlaceId, mockPlaces, maxTotal, db }) {
   let llamadasSearch = 0;
@@ -238,3 +300,4 @@ async function test_ejecutarBarridoConCache({ mockDb }) {
     comparacion: comp,
   };
 }
+

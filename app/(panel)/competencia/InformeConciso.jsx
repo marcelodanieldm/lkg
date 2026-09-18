@@ -1,10 +1,11 @@
 import React from 'react';
+import { REGLAS } from '../../../lib/core/rubric.js';
 
 /**
- * InformeConciso.jsx — Renderizado del Informe de Competencia.
+ * InformeConciso.jsx — Renderizado del Informe de Competencia Conciso.
  *
  * REGLAS DE DISEÑO:
- * - Conciso es cortar datos, no achicar la letra.
+ * - Conciso es cortar datos, no achicar la letra. La tabla de 38 filas va al export.
  * - Gráficos en CSS puro y SVG embebido. NINGUNA librería externa.
  * - NINGÚN dato de contacto de competidores (teléfono, email).
  * - Conteo absoluto de negocios (ej: "31 de 38..."), NUNCA porcentajes abstractos.
@@ -12,14 +13,39 @@ import React from 'react';
 export default function InformeConciso({ barridoRes }) {
   if (!barridoRes || !barridoRes.comparacion) return null;
 
-  const { origen, comparacion, llamadasGastadas, llamadasAhorradas, costoUSD, fechaRelevamiento, cache } = barridoRes;
-  const { resumen, anilloCercano, anilloAmplio, comparacionReglas = [] } = comparacion;
+  const { origen, comparacion, llamadasGastadas, llamadasAhorradas, costoUSD, fechaRelevamiento } = barridoRes;
+  const { baseSuficiente, razon, resumen, parrafos, anilloCercano, anilloAmplio, comparacionReglas = [] } = comparacion;
+
+  if (!baseSuficiente) {
+    return (
+      <div style={styles.contenedor}>
+        <div style={styles.insuficienteBox}>
+          <h3 style={styles.subtituloAlert}>⚠ Base de Comparación Insuficiente</h3>
+          <p style={styles.textoInsuficiente}>
+            {razon || 'Se encontraron menos de 5 competidores o menos de 10 reglas comunes evaluables en este radio.'}
+          </p>
+          <p style={styles.textoNotaInsuficiente}>
+            <strong>Nota estratégica:</strong> Poca competencia en la zona es en sí un hallazgo clave. Indica un mercado donde casi cualquier optimización del perfil generará dominancia local inmediata.
+          </p>
+        </div>
+        <div style={styles.pieMetodologia}>
+          <h4>Metodología y Transparencia del Relevamiento</h4>
+          <div style={styles.pieGrid}>
+            <div><strong>Radio de búsqueda:</strong> 4 km</div>
+            <div><strong>Negocios encontrados:</strong> {resumen?.totalCompetidores ?? 0}</div>
+            <div><strong>Reglas evaluables en común:</strong> {resumen?.reglasComunesEvaluadas ?? 0}</div>
+            <div><strong>Fecha del relevamiento:</strong> {fechaRelevamiento ? new Date(fechaRelevamiento).toLocaleString('es-AR') : '—'}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 1. Desglose de competidores para la cinta horizontal
   const todosCompetidores = [
     { id: origen.placeId, nombre: origen.nombre, score: origen.score, esPropio: true },
-    ...(anilloCercano.competidores || []).map(c => ({ id: c.placeId, nombre: c.nombre, score: c.score ?? 0, esPropio: false })),
-    ...(anilloAmplio.competidores || []).map(c => ({ id: c.placeId, nombre: c.nombre, score: c.score ?? 0, esPropio: false })),
+    ...(anilloCercano?.competidores || []).map(c => ({ id: c.placeId, nombre: c.nombre, score: c.score ?? 0, esPropio: false })),
+    ...(anilloAmplio?.competidores || []).map(c => ({ id: c.placeId, nombre: c.nombre, score: c.score ?? 0, esPropio: false })),
   ].sort((a, b) => b.score - a.score);
 
   // 2. Hallazgos: Dónde te ganan (Máximo 5 con conteo absoluto de negocios)
@@ -33,19 +59,27 @@ export default function InformeConciso({ barridoRes }) {
     .filter(r => r.estadoPropio === 'ok')
     .slice(0, 3);
 
+  const mapaReglas = new Map(REGLAS.map(r => [r.id, r]));
+
   return (
     <div style={styles.contenedor}>
-      {/* a) Veredicto en 1 línea + Posición en número grande */}
+      {/* a) EL VEREDICTO en 1 línea con posición en número grande */}
       <div style={styles.veredictoBox}>
         <span style={styles.veredictoTexto}>
-          Sos el <strong style={styles.numeroGrande}>{resumen.posicionGlobal}º</strong> de {resumen.totalEnTabla} {origen.nombre ? 'negocios' : ''} en 4 km.
+          Sos el <strong style={styles.numeroGrande}>{resumen.posicionGlobal}º</strong> de {resumen.totalEnTabla} {origen.nombre ? 'negocios' : ''} en 4 km a la redonda.
         </span>
         <div style={styles.scoreBadge}>Score Propio: {origen.score}/100</div>
       </div>
 
-      {/* b) Cinta Horizontal de Competidores (38 marcas en 1 línea) */}
+      {/* b) DOS PÁRRAFOS DE ANÁLISIS (Deterministas, máximo 90 palabras c/u) */}
+      <div style={styles.seccionParrafos}>
+        {parrafos?.parrafo1 && <p style={styles.parrafoAnalisis}>{parrafos.parrafo1}</p>}
+        {parrafos?.parrafo2 && <p style={styles.parrafoAnalisis}>{parrafos.parrafo2}</p>}
+      </div>
+
+      {/* c) LA CINTA HORIZONTAL (38 marcas en 1 línea) */}
       <div style={styles.seccionCinta}>
-        <div style={styles.cintaTitulo}>DISTRIBUCIÓN DEL SECTOR EN 4 KM</div>
+        <div style={styles.cintaTitulo}>DISTRIBUCIÓN DEL SECTOR EN 4 KM (PUNTAJE RÚBRICA 0 A 100)</div>
         <div style={styles.cintaTrack}>
           {todosCompetidores.map((c, idx) => (
             <div
@@ -58,7 +92,7 @@ export default function InformeConciso({ barridoRes }) {
                 width: c.esPropio ? '14px' : '8px',
                 height: c.esPropio ? '14px' : '8px',
                 zIndex: c.esPropio ? 10 : 1,
-                boxShadow: c.esPropio ? '0 0 0 3px rgba(16, 185, 129, 0.3)' : 'none',
+                boxShadow: c.esPropio ? '0 0 0 3px rgba(16, 185, 129, 0.4)' : 'none',
               }}
             />
           ))}
@@ -70,29 +104,35 @@ export default function InformeConciso({ barridoRes }) {
         </div>
       </div>
 
-      {/* c) TUS CINCO VECINOS (Anillo Cercano) */}
+      {/* d) TUS CINCO VECINOS (Formato párrafo por vecino, no tabla) */}
       <div style={styles.seccionVecinos}>
         <h3 style={styles.subtitulo}>Tus 5 Vecinos Más Cercanos</h3>
         <div style={styles.gridVecinos}>
-          {(anilloCercano.competidores || []).map((c, idx) => (
-            <div key={c.placeId || idx} style={styles.tarjetaVecino}>
-              <div style={styles.vecinoEncabezado}>
-                <strong style={styles.vecinoNombre}>{c.nombre}</strong>
-                <span style={styles.vecinoDistancia}>{c.distanciaMetros}m</span>
+          {(anilloCercano?.competidores || []).map((c, idx) => {
+            const cuadras = Math.max(1, Math.round((c.distanciaMetros || 0) / 100));
+            const comparativoDetalle = obtenerDetalleComparativoVecino(c, mapaReglas);
+
+            return (
+              <div key={c.placeId || idx} style={styles.tarjetaVecino}>
+                <div style={styles.vecinoEncabezado}>
+                  <strong style={styles.vecinoNombre}>{c.nombre}</strong>
+                  <span style={styles.vecinoDistancia}>a {cuadras} cuadras ({c.distanciaMetros} m)</span>
+                </div>
+                <div style={styles.vecinoScoreRow}>
+                  <span style={styles.vecinoScoreLbl}>Score Rúbrica:</span>
+                  <strong style={styles.vecinoScoreVal}>{c.score ?? 'nd'}/100</strong>
+                </div>
+                <div style={styles.vecinoDetalleText}>
+                  <p style={styles.vecinoQueHace}><strong>Qué hace mejor:</strong> {comparativoDetalle.queHaceMejor}</p>
+                  <p style={styles.vecinoQueVeCliente}><strong>Qué ve un cliente que está eligiendo:</strong> {comparativoDetalle.queVeCliente}</p>
+                </div>
               </div>
-              <div style={styles.vecinoScoreRow}>
-                <span style={styles.vecinoScoreLbl}>Score:</span>
-                <strong style={styles.vecinoScoreVal}>{c.score ?? 'nd'}/100</strong>
-              </div>
-              <div style={styles.vecinoCualidad}>
-                ✨ <em>{obtenerMejorCualidad(c)}</em>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* d) DÓNDE TE GANAN (Máximo 5 con conteos absolutos) */}
+      {/* e) DÓNDE TE GANAN (Máximo 5 con conteo absoluto) */}
       <div style={styles.seccionHallazgos}>
         <h3 style={styles.subtituloAlert}>Dónde te Ganan</h3>
         {dondeGanan.length === 0 ? (
@@ -103,8 +143,7 @@ export default function InformeConciso({ barridoRes }) {
               <li key={h.id} style={styles.itemFallo}>
                 <span style={styles.iconFallo}>❌</span>
                 <div>
-                  <strong>{h.cumplenCompetencia} de {h.evaluadosCompetencia}</strong> competidores cumplen con <em>{h.nombre}</em>.
-                  {h.evidenciaPropia && <span style={styles.detallePropio}> (Tu estado: {h.evidenciaPropia})</span>}
+                  <strong>{h.cumplenCompetencia} de {resumen.totalCompetidores}</strong> competidores tienen <em>{h.nombre}</em>. Vos no lo tenés resuelto.
                 </div>
               </li>
             ))}
@@ -112,7 +151,7 @@ export default function InformeConciso({ barridoRes }) {
         )}
       </div>
 
-      {/* e) DÓNDE GANÁS VOS (Máximo 3) */}
+      {/* f) DÓNDE GANÁS VOS (Máximo 3) */}
       <div style={styles.seccionFortalezas}>
         <h3 style={styles.subtituloExito}>Dónde Ganás Vos</h3>
         {dondeGanas.length === 0 ? (
@@ -123,7 +162,7 @@ export default function InformeConciso({ barridoRes }) {
               <li key={f.id} style={styles.itemExito}>
                 <span style={styles.iconExito}>✓</span>
                 <div>
-                  <strong>{f.nombre}</strong>: {f.evidenciaPropia || 'Cumples correctamente con esta regla.'}
+                  <strong>{f.nombre}</strong>: Tenés esta regla correctamente cumplida a tu favor.
                 </div>
               </li>
             ))}
@@ -131,16 +170,16 @@ export default function InformeConciso({ barridoRes }) {
         )}
       </div>
 
-      {/* f) Pie Metodológico */}
+      {/* g) AL PIE, EL MÉTODO */}
       <div style={styles.pieMetodologia}>
         <h4>Metodología y Transparencia del Relevamiento</h4>
         <div style={styles.pieGrid}>
           <div><strong>Radio de búsqueda:</strong> 4 km</div>
           <div><strong>Negocios encontrados:</strong> {resumen.totalCompetidores}</div>
-          <div><strong>Anillo Cercano (Detalle):</strong> {anilloCercano.total} negocios</div>
-          <div><strong>Anillo Amplio (Búsqueda):</strong> {anilloAmplio.total} negocios</div>
+          <div><strong>Anillo Cercano (con Detalle):</strong> {anilloCercano?.total ?? 0} negocios</div>
+          <div><strong>Anillo Amplio (con Búsqueda):</strong> {anilloAmplio?.total ?? 0} negocios</div>
           <div><strong>Reglas evaluables en común:</strong> {resumen.reglasComunesEvaluadas}</div>
-          <div><strong>Fecha del relevamiento:</strong> {new Date(fechaRelevamiento).toLocaleString('es-AR')}</div>
+          <div><strong>Fecha del relevamiento:</strong> {fechaRelevamiento ? new Date(fechaRelevamiento).toLocaleString('es-AR') : '—'}</div>
           <div><strong>Llamadas API gastadas:</strong> {llamadasGastadas}</div>
           <div><strong>Llamadas ahorradas por corpus:</strong> {llamadasAhorradas || 0}</div>
         </div>
@@ -149,11 +188,30 @@ export default function InformeConciso({ barridoRes }) {
   );
 }
 
-function obtenerMejorCualidad(c) {
-  if (!c.auditoria || !c.auditoria.hallazgos) return 'Responde reseñas y mantiene fotos.';
+function obtenerDetalleComparativoVecino(c, mapaReglas) {
+  if (!c.auditoria || !c.auditoria.hallazgos) {
+    return {
+      queHaceMejor: 'Mantiene perfil activo y verificado en Google Maps.',
+      queVeCliente: 'Un cliente ve un negocio cercano con información básica cargada.'
+    };
+  }
+
   const fuertes = c.auditoria.hallazgos.filter(h => h.puntos > 0);
-  if (fuertes.length) return fuertes[0].titulo || 'Información completa cargada.';
-  return 'Perfil activo en Google Maps.';
+
+  if (!fuertes.length) {
+    return {
+      queHaceMejor: 'Mantiene presencia básica en Google Maps.',
+      queVeCliente: 'El perfil muestra los datos esenciales de ubicación.'
+    };
+  }
+
+  const mejorRegla = fuertes[0];
+  const def = mapaReglas.get(mejorRegla.id);
+
+  const queHaceMejor = mejorRegla.evidencia || def?.titulo || 'Cumple con estándares del sector.';
+  const queVeCliente = def?.comparativo || def?.recomendacion || 'Alguien que busca desde el celular ve información más completa en este perfil.';
+
+  return { queHaceMejor, queVeCliente };
 }
 
 const styles = {
@@ -172,7 +230,7 @@ const styles = {
     alignItems: 'center',
     padding: '20px',
     background: '#f8fafc',
-    borderLeft: '6px solid #3b82f6',
+    borderLeft: '6px solid #2563eb',
     borderRadius: '8px',
     marginBottom: '24px',
   },
@@ -193,11 +251,25 @@ const styles = {
     fontWeight: '700',
     fontSize: '14px',
   },
+  seccionParrafos: {
+    marginBottom: '24px',
+    background: '#f1f5f9',
+    padding: '16px 20px',
+    borderRadius: '8px',
+    borderLeft: '4px solid #64748b',
+  },
+  parrafoAnalisis: {
+    fontSize: '15px',
+    lineHeight: '1.6',
+    color: '#334155',
+    marginBottom: '12px',
+  },
   seccionCinta: {
     marginBottom: '32px',
     padding: '16px',
-    background: '#f1f5f9',
+    background: '#f8fafc',
     borderRadius: '8px',
+    border: '1px solid #e2e8f0',
   },
   cintaTitulo: {
     fontSize: '12px',
@@ -209,16 +281,15 @@ const styles = {
   cintaTrack: {
     position: 'relative',
     height: '24px',
-    background: 'linear-gradient(to right, #ef4444, #eab308, #22c55e)',
+    background: 'linear-gradient(90deg, #fee2e2 0%, #fef3c7 50%, #dcfce7 100%)',
     borderRadius: '12px',
-    margin: '10px 0',
+    marginBottom: '8px',
   },
   cintaPin: {
     position: 'absolute',
     top: '50%',
     transform: 'translate(-50%, -50%)',
     borderRadius: '50%',
-    transition: 'all 0.3s ease',
   },
   cintaLeyenda: {
     display: 'flex',
@@ -232,66 +303,69 @@ const styles = {
   subtitulo: {
     fontSize: '18px',
     fontWeight: '700',
-    color: '#1e293b',
     marginBottom: '16px',
+    color: '#0f172a',
   },
   gridVecinos: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
   },
   tarjetaVecino: {
-    border: '1px solid #cbd5e1',
-    borderRadius: '8px',
-    padding: '12px',
     background: '#ffffff',
+    border: '1px solid #e2e8f0',
+    borderRadius: '8px',
+    padding: '16px',
   },
   vecinoEncabezado: {
     display: 'flex',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: '8px',
   },
   vecinoNombre: {
-    fontSize: '14px',
-    color: '#0f172a',
-    maxWidth: '140px',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    fontSize: '16px',
+    color: '#1e293b',
   },
   vecinoDistancia: {
-    fontSize: '12px',
+    fontSize: '13px',
     color: '#64748b',
+    fontWeight: '600',
   },
   vecinoScoreRow: {
-    fontSize: '13px',
     marginBottom: '8px',
+    fontSize: '14px',
   },
   vecinoScoreLbl: {
     color: '#64748b',
-    marginRight: '4px',
+    marginRight: '6px',
   },
   vecinoScoreVal: {
-    color: '#0369a1',
+    color: '#0f172a',
   },
-  vecinoCualidad: {
-    fontSize: '12px',
+  vecinoDetalleText: {
+    fontSize: '14px',
     color: '#334155',
-    background: '#f8fafc',
-    padding: '6px',
-    borderRadius: '4px',
+    lineHeight: '1.5',
+  },
+  vecinoQueHace: {
+    marginBottom: '4px',
+  },
+  vecinoQueVeCliente: {
+    color: '#475569',
+    fontStyle: 'italic',
   },
   seccionHallazgos: {
-    marginBottom: '24px',
+    marginBottom: '28px',
+  },
+  seccionFortalezas: {
+    marginBottom: '28px',
   },
   subtituloAlert: {
     fontSize: '18px',
     fontWeight: '700',
     color: '#dc2626',
     marginBottom: '12px',
-  },
-  seccionFortalezas: {
-    marginBottom: '32px',
   },
   subtituloExito: {
     fontSize: '18px',
@@ -303,56 +377,68 @@ const styles = {
     listStyle: 'none',
     padding: 0,
     margin: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
   },
   itemFallo: {
     display: 'flex',
-    alignItems: 'flex-start',
     gap: '10px',
-    padding: '10px',
+    alignItems: 'flex-start',
     background: '#fef2f2',
-    borderLeft: '4px solid #ef4444',
-    borderRadius: '4px',
-    marginBottom: '8px',
+    padding: '10px 14px',
+    borderRadius: '6px',
     fontSize: '14px',
-  },
-  iconFallo: {
-    fontSize: '14px',
-  },
-  detallePropio: {
-    color: '#991b1b',
-    fontSize: '12px',
   },
   itemExito: {
     display: 'flex',
-    alignItems: 'flex-start',
     gap: '10px',
-    padding: '10px',
+    alignItems: 'flex-start',
     background: '#f0fdf4',
-    borderLeft: '4px solid #22c55e',
-    borderRadius: '4px',
-    marginBottom: '8px',
+    padding: '10px 14px',
+    borderRadius: '6px',
     fontSize: '14px',
+  },
+  iconFallo: {
+    color: '#dc2626',
   },
   iconExito: {
     color: '#16a34a',
     fontWeight: 'bold',
   },
   textoVacio: {
+    fontSize: '14px',
     color: '#64748b',
     fontStyle: 'italic',
+  },
+  insuficienteBox: {
+    background: '#fffbebfb',
+    borderLeft: '6px solid #f59e0b',
+    borderRadius: '8px',
+    padding: '20px',
+    marginBottom: '24px',
+  },
+  textoInsuficiente: {
+    fontSize: '16px',
+    color: '#92400e',
+    marginBottom: '8px',
+  },
+  textoNotaInsuficiente: {
     fontSize: '14px',
+    color: '#78350f',
   },
   pieMetodologia: {
-    marginTop: '32px',
-    paddingTop: '20px',
+    background: '#f8fafc',
     borderTop: '1px solid #e2e8f0',
-    fontSize: '12px',
+    paddingTop: '16px',
+    marginTop: '24px',
+    fontSize: '13px',
     color: '#64748b',
   },
   pieGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '8px',
-    marginTop: '10px',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+    gap: '8px 16px',
+    marginTop: '8px',
   },
 };
