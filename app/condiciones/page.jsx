@@ -38,7 +38,7 @@ export default function Condiciones() {
           <div>
             <h2 style={{ fontSize: 19, fontWeight: 600, marginBottom: 8 }}>1. Objeto y Alcance del Servicio</h2>
             <p>
-              {AGENCIA}, operado por <b>{PERSONA}</b> desde {CIUDAD}, brinda servicios de diagnóstico, auditoría técnica
+              <b>{AGENCIA}</b> brinda servicios de diagnóstico, auditoría técnica
               y optimización operativa para perfiles comerciales públicos en Google Maps. Las presentes condiciones aplican a
               los informes gratuitos generados a solicitud y a las contrataciones de servicios de optimización.
             </p>
@@ -85,7 +85,7 @@ export default function Condiciones() {
           <div>
             <h2 style={{ fontSize: 19, fontWeight: 600, marginBottom: 8 }}>6. Contacto y Consultas</h2>
             <p>
-              Para cualquier aclaración sobre estas condiciones o los informes emitidos, podés comunicarte directamente a {CORREO ? <b>{CORREO}</b> : 'nuestra casilla de contacto'}.
+              Para cualquier aclaración sobre estas condiciones o los informes emitidos, podés comunicarte a través de los canales oficiales de contacto.
             </p>
           </div>
         </section>
