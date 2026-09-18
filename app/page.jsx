@@ -204,9 +204,8 @@ export default function Landing() {
                 {' '}<b>Sin compromiso y sin llamarte por teléfono.</b>
               </p>
 
-              <Formulario compacto />
-
-              <div className="acciones-hero" style={{ marginTop: 4 }}>
+              <div className="acciones-hero" style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+                <a href="#pedir" className="cta">Pedir mi auditoría gratis</a>
                 <Link href="/informe/ejemplo" className="cta calada">Ver un informe de ejemplo</Link>
               </div>
             </div>
