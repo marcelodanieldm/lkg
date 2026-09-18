@@ -19,28 +19,9 @@ export default function Formulario({ compacto = false }) {
   const [confirmado, setConfirmado] = useState(false);
   const [mostrarMapa, setMostrarMapa] = useState(false);
 
-  // Estado para la pregunta opcional post-envío
-  const [motivoTexto, setMotivoTexto] = useState('');
-  const [guardandoMotivo, setGuardandoMotivo] = useState(false);
-  const [motivoGuardado, setMotivoGuardado] = useState(false);
-
   const confirmHeaderRef = useRef(null);
   const idPeticionRef = useRef(0);
   const ultimaConsultaRef = useRef('');
-
-  async function handleGuardarMotivo(e) {
-    e.preventDefault();
-    if (!motivoTexto.trim() || !estado?.idSolicitud || guardandoMotivo) return;
-    setGuardandoMotivo(true);
-    try {
-      await guardarMotivoBusquedaWeb(estado.idSolicitud, motivoTexto.trim());
-      setMotivoGuardado(true);
-    } catch {
-      setMotivoGuardado(true);
-    } finally {
-      setGuardandoMotivo(false);
-    }
-  }
 
   // Mover el foco al campo con error cuando el servidor retorna una falla
   useEffect(() => {
@@ -128,45 +109,6 @@ export default function Formulario({ compacto = false }) {
           <p>
             Cuando llegue, si querés preguntarme algo, respondé ese mismo correo.
           </p>
-
-          {/* Pregunta opcional post-envío */}
-          {estado?.idSolicitud && (
-            <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '16px' }}>
-              <form onSubmit={handleGuardarMotivo} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label htmlFor="motivo-busqueda-landing" style={{ fontWeight: 'bold', fontSize: '14px', display: 'block' }}>
-                  ¿Pasó algo que te hizo buscar esto?
-                </label>
-                <span style={{ fontSize: '13px', opacity: 0.85, display: 'block' }}>
-                  Una línea alcanza. Me sirve para saber por dónde empezar.
-                </span>
-                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                  <input
-                    id="motivo-busqueda-landing"
-                    name="motivoBusqueda"
-                    type="text"
-                    value={motivoTexto}
-                    onChange={(e) => setMotivoTexto(e.target.value)}
-                    placeholder="Ej: Nos abrió un competidor enfrente / cayó la facturación este mes"
-                    disabled={motivoGuardado}
-                    style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', fontSize: '13px' }}
-                  />
-                  <button
-                    type="submit"
-                    className="cta"
-                    disabled={guardandoMotivo || !motivoTexto.trim() || motivoGuardado}
-                    style={{ padding: '8px 16px', fontSize: '13px', whiteSpace: 'nowrap' }}
-                  >
-                    {guardandoMotivo ? 'Guardando…' : 'Contarle'}
-                  </button>
-                </div>
-              </form>
-              {motivoGuardado && (
-                <p role="status" style={{ marginTop: '10px', fontSize: '13px', color: '#10b981', fontWeight: 'bold' }}>
-                  Gracias, lo anoté.
-                </p>
-              )}
-            </div>
-          )}
         </div>
       </div>
     );
