@@ -3,12 +3,5 @@
   "crons": [
     { "path": "/api/cron/supervisor", "schedule": "0 22 * * *" }
   ],
-  "functions": {
-    "app/api/cron/[tarea]/route.js": { "maxDuration": 300 },
-    "app/api/auditar/route.js": { "maxDuration": 60 },
-    "app/api/guard/route.js": { "maxDuration": 30 },
-    "app/(panel)/solicitudes/page.jsx": { "maxDuration": 60 },
-    "app/(panel)/simulacro/page.jsx": { "maxDuration": 60 }
-  },
   "regions": ["gru1"]
 }
