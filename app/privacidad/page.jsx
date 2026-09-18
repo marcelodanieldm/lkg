@@ -39,7 +39,7 @@ export default function Privacidad() {
           <div>
             <h2 style={{ fontSize: 19, fontWeight: 600, marginBottom: 8 }}>1. Responsable del tratamiento</h2>
             <p>
-              El servicio es operado por <b>{AGENCIA}</b>. Para cualquier consulta sobre la privacidad o el manejo de datos, podés comunicarte a través de los canales de contacto oficial.
+              El servicio es operado por <b>{AGENCIA}</b>. Para cualquier consulta sobre la privacidad o el manejo de datos, podés escribir a <b>info@lokigi.online</b>.
             </p>
           </div>
 

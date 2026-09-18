@@ -85,7 +85,7 @@ export default function Condiciones() {
           <div>
             <h2 style={{ fontSize: 19, fontWeight: 600, marginBottom: 8 }}>6. Contacto y Consultas</h2>
             <p>
-              Para cualquier aclaración sobre estas condiciones o los informes emitidos, podés comunicarte a través de los canales oficiales de contacto.
+              Para cualquier aclaración sobre estas condiciones o los informes emitidos, podés comunicarte directamente a <b>info@lokigi.online</b>.
             </p>
           </div>
         </section>
