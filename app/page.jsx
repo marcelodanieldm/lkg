@@ -362,7 +362,7 @@ export default function Landing() {
             <Pin size={20} color="var(--muted)" />
             <span style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 16, color: 'var(--muted)' }}>{AGENCIA}</span>
           </span>
-          <span style={{ fontSize: 13.5, color: 'var(--muted)' }}>{CIUDAD}, Argentina · {CORREO}</span>
+          <span style={{ fontSize: 13.5, color: 'var(--muted)' }}>Argentina</span>
           <span className="der">
             <a href="#datos">De dónde saqué tus datos</a>
             <Link href="/privacidad">Política de privacidad</Link>
