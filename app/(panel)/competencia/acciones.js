@@ -93,14 +93,8 @@ export async function obtenerEstadoProspeccionCompetidoresAction(barridoId) {
   const completo = await db.obtenerBarridoCompleto(barridoId);
   if (!completo || !completo.competidores) return [];
 
-  // Traer leads y supresiones existentes para comparar
-  const [leads, supresiones] = await Promise.all([
-    db.rest('leads?select=place_id,email').catch(() => []),
-    db.rest('supresiones?select=email').catch(() => []),
-  ]);
-
-  const setLeads = new Set((leads || []).map(l => l.place_id).filter(Boolean));
-  const setSupresiones = new Set((supresiones || []).map(s => s.email?.toLowerCase()).filter(Boolean));
+  // Traer leads existentes para comparar
+  const setLeads = await db.obtenerPlaceIdsLeads().catch(() => new Set());
 
   return completo.competidores.map(c => {
     const yaEsLead = setLeads.has(c.place_id);
