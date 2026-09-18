@@ -193,7 +193,7 @@ export async function POST(req) {
   }
 
   if (conInforme) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://lokigi.vercel.app').replace(/\/$/, '');
     salida.informeHTML = generarInformeHTML(resultado, {
       agencia: process.env.AGENCIA_NOMBRE || 'Lokigi',
       remitente: process.env.AGENCIA_REMITENTE || '',

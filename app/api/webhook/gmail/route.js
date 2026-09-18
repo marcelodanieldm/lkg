@@ -22,7 +22,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-const APP = () => process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const APP = () => (process.env.NEXT_PUBLIC_APP_URL || 'https://lokigi.vercel.app').replace(/\/$/, '');
 
 export async function POST(req) {
   // Pub/Sub firma con un token que se define al crear la suscripción. Sin

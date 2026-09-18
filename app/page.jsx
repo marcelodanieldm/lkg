@@ -22,7 +22,7 @@ const AGENCIA = process.env.AGENCIA_NOMBRE || 'Lokigi';
 const CIUDAD = process.env.AGENCIA_CIUDAD || '[TU CIUDAD]';
 const CORREO = process.env.EMAIL_OPERADOR || '[TU CORREO]';
 const PERSONA = process.env.AGENCIA_PERSONA || '[TU NOMBRE]';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://lokigi.com';
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://lokigi.vercel.app').replace(/\/$/, '');
 
 const TITULO = `${AGENCIA} — Auditoría gratuita de tu perfil en Google Maps`;
 const DESCRIPCION =

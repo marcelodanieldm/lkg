@@ -97,7 +97,7 @@ async function avisar({ negocio, email, ciudad, dadoDeBaja }) {
     if (!para) return;
 
     const { enviar } = await import('../lib/integrations/gmail.js');
-    const app = process.env.NEXT_PUBLIC_APP_URL || '';
+    const app = (process.env.NEXT_PUBLIC_APP_URL || 'https://lokigi.vercel.app').replace(/\/$/, '');
     const texto =
       `${negocio}${ciudad ? ` (${ciudad})` : ''} pidió una auditoría desde la web.\n\n` +
       `Correo: ${email}\n\n` +

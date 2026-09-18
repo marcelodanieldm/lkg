@@ -50,7 +50,7 @@ export async function auditarSolicitud(formData) {
     const data = await res.json().catch(() => ({}));
 
     if (res.ok && data.placeId) {
-      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://lkg.vercel.app').replace(/\/$/, '');
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://lokigi.vercel.app').replace(/\/$/, '');
       const informeUrl = `${appUrl}/informe/${data.placeId}`;
       const debeEnviar = enviarEmail && Boolean(email);
 

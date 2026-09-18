@@ -31,7 +31,7 @@ export const dynamic = 'force-dynamic';
 // la fuente de datos por inyección. Acá se le enchufa Supabase en vez de Sheets.
 usarFuente(db);
 
-const APP = () => process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const APP = () => (process.env.NEXT_PUBLIC_APP_URL || 'https://lokigi.vercel.app').replace(/\/$/, '');
 
 function autorizado(req) {
   if (req.headers.get('x-internal-action') === 'true') return true;

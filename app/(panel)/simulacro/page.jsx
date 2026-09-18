@@ -59,7 +59,7 @@ export default async function SimulacroPage() {
     },
   };
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://lokigi.vercel.app').replace(/\/$/, '');
   const remitente = process.env.AGENCIA_REMITENTE || 'Martín';
   const agencia = process.env.AGENCIA_NOMBRE || 'Lokigi';
 
