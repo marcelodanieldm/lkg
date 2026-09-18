@@ -16,6 +16,7 @@ const PANTALLAS = [
   ['/solicitudes', 'Solicitudes'],
   ['/aprobaciones', 'Aprobaciones'],
   ['/leads', 'Leads'],
+  ['/competencia', 'Competencia'],
   ['/simulacro', 'Simulacro'],
 ];
 
