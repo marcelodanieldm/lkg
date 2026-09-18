@@ -18,7 +18,8 @@
     "auth": "node scripts/google-auth.js",
     "humo": "node --env-file=.env.local scripts/humo-places.js",
     "camino": "node --env-file=.env.local scripts/camino-feliz.js",
-    "humo:email": "node --env-file=.env.local scripts/humo-gmail.js"
+    "humo:email": "node --env-file=.env.local scripts/humo-gmail.js",
+    "barrido": "node --env-file=.env.local scripts/barrido.js"
   },
   "dependencies": {
     "next": "^15.5.0",
