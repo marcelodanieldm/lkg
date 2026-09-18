@@ -35,11 +35,13 @@ Places API + sitio web + captura asistida
   - `rubric.js`: 25 reglas en 6 dimensiones. Incluye para cada fallo la solución paso a paso (`comoSeArregla`).
   - `audit-engine.js`: Ejecuta la rúbrica sobre perfiles normalizados.
   - `quote-engine.js`: Calcula presupuestos y alternativas según el catálogo.
+  - `competencia.js`: Cálculo determinista pure-math de distancias (Haversine), celdas geográficas de ~1 km y comparación de reglas entre competidores.
   - `resenas.js`: Cruza el texto de reseñas reales contra los datos declarados en el perfil (ej. horario incoherente).
   - `prospeccion.js`: Armado determinista de intentos de seguimiento.
 - **`lib/guardrails/`**: `guard.js` evalúa los intentos y aplica linter, ventana horaria, rampa de calentamiento y supresiones.
 - **`lib/db/`**: Adaptador de Postgres sobre Supabase REST API (PostgREST), sin el cliente pesado de SDK.
-- **`lib/integrations/`**: Módulos que hablan con servicios externos (Places API, Workspace). Solo escriben o leen notas aisladas.
+- **`lib/integrations/`**: Módulos que hablan con servicios externos (Places API, Workspace).
+  - `barrido-engine.js`: Orquestador del Barrido de Competidores (Dos Anillos, presupuesto y caché).
 - **`app/`**: Aplicación Next.js con grupo de rutas privadas `app/(panel)/` protegidas por sesión.
 
 ---
@@ -53,6 +55,20 @@ Places API + sitio web + captura asistida
 5. **Rampa de calentamiento del buzón**: Escalones semanales de 5 / 10 / 15 / 20 / 25 envíos por día para proteger la reputación del dominio.
 6. **El informe se congela**: Se almacena el HTML renderizado el día del envío para evitar discrepancias si el perfil cambia después.
 7. **Workspace escribe, no decide**: Sheets es un espejo nocturno de lectura/trabajo. Ningún cambio en Sheets puede desescribir una baja o autorizar un envío.
+8. **Los competidores de un barrido NUNCA se convierten en leads**: El relevamiento geográfico es analítico y vive en `barridos`, `barrido_competidores` y `barrido_reglas`. Jamás escribe en `Leads` ni entra a la cola de contacto (verificado por test de propiedad crítica).
+
+---
+
+## 🧭 Barrido de Competidores por Cercanía (Bajo Costo & Dos Anillos)
+
+Diseñado para relevar hasta 40 competidores en un radio de 4 km optimizando el consumo de Places API (< $0.19 USD por barrido completo):
+
+- **Arquitectura de Dos Anillos**:
+  - **Anillo 1 (Cercano - Top 5 más próximos por Haversine)**: Llama a `detallePlace` con reseñas y audita sobre las 25 reglas completas.
+  - **Anillo 2 (Amplio - Puestos 6º al 40º)**: Realiza **0 llamadas de detalle**. Audita únicamente sobre los datos devueltos por la búsqueda ampliada (`FIELDMASK_BARRIDO`: fotos, horarios, teléfono, etc.).
+- **Caché Geográfico (~1 km) & 30 Días**: Agrupa relevamientos por celda geográfica truncada a 2 decimales (`lat.toFixed(2), lng.toFixed(2)`) y categoría primaria. Si existe un barrido reciente, se reutiliza a costo USD $0.
+- **Control Previo de Presupuesto Mensual**: Verifica `gastoDelMes()` contra `presupuesto_api_mes_usd` en Supabase antes de realizar búsquedas a la API de Google.
+- **CLI Runner**: Ejecutable directamente con `npm run barrido <placeId>`.
 
 ---
 
@@ -107,6 +123,9 @@ npm test
 
 # Preflight de verificación de entorno, base y guardrails
 npm run verificar
+
+# Barrido de competidores por cercanía (Dos Anillos)
+npm run barrido ChIJCSLssnKrt5URWyFhlKOAwm0
 
 # Generar refresh token de Google OAuth
 npm run auth
