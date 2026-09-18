@@ -85,6 +85,7 @@ Las tareas no dependen del cron de Vercel (limitado a 1 ejec/día en plan Hobby)
 | `supervisor` | 22:00 UTC (19:00 AR) | Revisa métricas del día, dispara alarmas y pausa si hay anomalías. |
 | `espejo` | 05:00 UTC (2:00 AR) | Vuelca Postgres a la planilla de Sheets espejo. |
 | `postventa` | 1º de cada mes | Re-audita clientes activos para medir evolución de score. |
+| `informe_cliente` | 26 de cada mes (15:00 UTC / 12:00 AR) | Re-auditoría mensual del cliente, barrido desde corpus y caché, evaluación de evolución y alertas al operador. |
 
 ---
 

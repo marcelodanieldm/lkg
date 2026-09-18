@@ -23,6 +23,8 @@ import { obtenerSiguientePaso } from '../../../../lib/core/prospeccion.js';
 import { agenteProspector, agenteRedactor, agenteConversador, agenteSupervisor } from '../../../../lib/ia/gemini.js';
 import * as ws from '../../../../lib/integrations/workspace.js';
 import { generarPresupuestos, generarAlternativasReduccion } from '../../../../lib/core/quote-engine.js';
+import { ejecutarBarrido } from '../../../../lib/integrations/barrido-engine.js';
+import { evaluarEvolucionCliente, construirInformeMensualClienteHTML } from '../../../../lib/core/retencion.js';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -45,6 +47,124 @@ function autorizado(req) {
 // ─────────────────────────────────────────────────────────────────────
 
 const TAREAS = {
+
+  /**
+   * Re-audita clientes activos, realiza barrido de competidores, calcula evolución,
+   * encola el informe de retención en aprobaciones y agrupa alertas para el operador.
+   */
+  async informe_cliente() {
+    const pausa = await db.config('pausa_general', false);
+    if (pausa) return { saltada: true, razon: 'pausa_general activa' };
+
+    const clientes = await db.obtenerClientesActivos();
+    if (!clientes || !clientes.length) {
+      return { clientes: 0, procesados: 0, informesQueued: 0, alertas: 0 };
+    }
+
+    const umbralSalto = Number(await db.config('alerta_salto_score_pts', 10));
+    let procesados = 0;
+    let informesQueued = 0;
+    let totalAlertas = 0;
+
+    for (const lead of clientes) {
+      try {
+        const placeId = lead.id || lead.place_id;
+        if (!placeId) continue;
+
+        // 1. Barrido de competencia (3 capas: corpus, búsqueda, detalles)
+        const resBarrido = await ejecutarBarrido(placeId, { fuenteDatos: db });
+        const auditoriaActual = resBarrido.origen ? { score: resBarrido.origen.score } : auditar(desdePlacesApi({ placeId }));
+        const competidoresActuales = resBarrido.comparacion?.competidores || [];
+
+        // 2. Obtener historial anterior
+        const historialPrevio = await db.obtenerUltimoHistorialCliente(lead.id);
+
+        // 3. Evaluar evolución
+        const evolucion = evaluarEvolucionCliente(historialPrevio, auditoriaActual, competidoresActuales, { umbralSaltoScore: umbralSalto });
+
+        // 4. Guardar registro en historial_clientes
+        const idHistorial = `hist_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        await db.guardarHistorialCliente({
+          id: idHistorial,
+          lead_id: lead.id,
+          score: evolucion.scoreActual,
+          posicion: evolucion.posicionActual,
+          total_competidores: evolucion.totalCompetidores,
+          auditado_json: auditoriaActual,
+          barrido_id: resBarrido.barridoId || null,
+          diagnostico_caida: evolucion.diagnosticoCaida,
+          es_primera_medicion: evolucion.esPrimeraMedicion,
+        });
+
+        // 5. Registrar alertas de operador si las hay
+        if (evolucion.alertas && evolucion.alertas.length) {
+          for (const alt of evolucion.alertas) {
+            await db.registrarAlertaOperador({
+              id: `alt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+              lead_id: lead.id,
+              tipo: alt.tipo,
+              detalle: alt.detalle,
+              enviado: false,
+            });
+            totalAlertas++;
+          }
+        }
+
+        // 6. Generar HTML del informe y poner intencion en aprobaciones (NUNCA enviar directo)
+        if (lead.email) {
+          const htmlMensaje = construirInformeMensualClienteHTML(lead, evolucion);
+          const asunto = `Informe Mensual de Evolución — ${lead.negocio}`;
+          const intento = {
+            leadId: lead.id,
+            canal: 'email',
+            tipo: 'informe_cliente',
+            para: lead.email,
+            asunto,
+            html: htmlMensaje,
+          };
+
+          const v = await evaluar(intento);
+          if (v.veredicto === VEREDICTO.PERMITIDO || v.veredicto === VEREDICTO.DIFERIDO) {
+            await db.agregar('Aprobaciones', {
+              id: `aprob_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+              lead_id: lead.id,
+              canal: 'email',
+              tipo: 'informe_cliente',
+              para: lead.email,
+              asunto,
+              html: htmlMensaje,
+              decision: 'PENDIENTE',
+              regla_bloqueante: null,
+              huella: huella(intento),
+            });
+            informesQueued++;
+          }
+        }
+
+        procesados++;
+      } catch (e) {
+        await db.agregar('Bitacora', {
+          agente: 'informe_cliente', accion: 'evaluar_cliente', lead_id: lead.id,
+          decision: 'error', razon: String(e?.message || e).slice(0, 400),
+        }).catch(() => {});
+      }
+    }
+
+    // 7. Enviar resumen de alertas al operador (máximo 1 correo agrupado por semana/corrida)
+    const alertasSinEnviar = await db.obtenerAlertasOperadorSinEnviar();
+    if (alertasSinEnviar && alertasSinEnviar.length > 0) {
+      const lineasAlertas = alertasSinEnviar.map(a => `- [${a.tipo}] Lead ID: ${a.lead_id} — ${JSON.stringify(a.detalle)}`);
+      const textoResumen = `Lokigi · Alertas operativas de competidores (${alertasSinEnviar.length} detectadas)\n\n` +
+        `Se han detectado los siguientes eventos en los barridos de retención:\n\n` +
+        lineasAlertas.join('\n') +
+        `\n\nRevisá el panel para más detalles.`;
+
+      await avisarOperador(`Lokigi · Resumen de alertas de competidores (${alertasSinEnviar.length})`, textoResumen);
+      await db.marcarAlertasOperadorEnviadas(alertasSinEnviar.map(a => a.id));
+    }
+
+    return { clientes: clientes.length, procesados, informesQueued, alertas: totalAlertas };
+  },
 
   /** Busca, audita, redacta y manda al guardián. Nunca envía por su cuenta. */
   async prospeccion() {

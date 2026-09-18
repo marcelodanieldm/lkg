@@ -878,3 +878,43 @@ comment on column leads.horarios_ofrecidos is
 -- el cupo real disponible para los toques posteriores.
 
 select cron.schedule('lokigi-seguimiento', '0 13 * * 1-5', $$ select llamar_tarea('seguimiento') $$);
+
+-- ─────────────────────────────────────────────────────────────────────
+-- 008_retencion.sql — Mecanismo de retención e informes mensuales
+-- ─────────────────────────────────────────────────────────────────────
+
+create table if not exists historial_clientes (
+  id text primary key,
+  lead_id text not null references leads(id) on delete cascade,
+  score int not null,
+  posicion int,
+  total_competidores int,
+  auditado_json jsonb,
+  barrido_id text references barridos(id) on delete set null,
+  diagnostico_caida text check (diagnostico_caida in ('cliente_perdio_terreno', 'competidor_avanzo', 'cambio_perfil', 'sin_cambio')),
+  es_primera_medicion boolean default false,
+  creado_en timestamptz not null default now()
+);
+
+create table if not exists alertas_operador (
+  id text primary key,
+  lead_id text references leads(id) on delete cascade,
+  tipo text not null check (tipo in ('salto_competidor', 'nuevo_competidor', 'caida_rating_cliente')),
+  detalle jsonb not null,
+  enviado boolean default false,
+  creado_en timestamptz not null default now()
+);
+
+create index if not exists idx_historial_clientes_lead on historial_clientes (lead_id, creado_en desc);
+create index if not exists idx_alertas_operador_enviado on alertas_operador (enviado, creado_en);
+
+alter table historial_clientes enable row level security;
+alter table alertas_operador enable row level security;
+
+insert into config (clave, valor, nota) values
+  ('dia_informe_cliente', '26', 'Día del mes para el informe de retención a clientes'),
+  ('alerta_salto_score_pts', '10', 'Puntos de salto de score de un competidor para alertar al operador')
+on conflict (clave) do nothing;
+
+select cron.schedule('lokigi-informe-cliente', '0 15 26 * *', $$ select llamar_tarea('informe_cliente') $$);
+
