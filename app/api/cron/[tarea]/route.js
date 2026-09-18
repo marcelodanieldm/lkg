@@ -23,7 +23,7 @@ import { obtenerSiguientePaso } from '../../../../lib/core/prospeccion.js';
 import { agenteProspector, agenteRedactor, agenteConversador, agenteSupervisor } from '../../../../lib/ia/gemini.js';
 import * as ws from '../../../../lib/integrations/workspace.js';
 import { generarPresupuestos, generarAlternativasReduccion } from '../../../../lib/core/quote-engine.js';
-import { ejecutarBarrido } from '../../../../lib/integrations/barrido-engine.js';
+import { ejecutarBarrido, recongelarInformeConBarrido } from '../../../../lib/integrations/barrido-engine.js';
 import { evaluarEvolucionCliente, construirInformeMensualClienteHTML } from '../../../../lib/core/retencion.js';
 
 export const maxDuration = 300;
@@ -74,14 +74,46 @@ const TAREAS = {
           continue;
         }
 
+        // Recongelar el informe existente con el análisis completo (manteniendo cifras de auditoría byte a byte)
+        await recongelarInformeConBarrido(placeId, resBarrido.comparacion, { fuenteDatos: db });
+
         await db.marcarBarridoCompletado(placeId, resBarrido.barridoId, 'completado');
 
         await avisarOperador(
-          `Lokigi · ${item.negocio} abrió su informe y el barrido está listo`,
+          `Lokigi · ${item.negocio} abrió su informe, ya tiene el análisis completo cargado`,
           `${item.negocio} (${item.email || placeId}) abrió su informe de auditoría.\n\n` +
-          `El barrido de competidores en 4 km se procesó correctamente y quedó congelado (ID: ${resBarrido.barridoId || '—'}).\n\n` +
+          `El barrido de competidores en 4 km se procesó correctamente y el informe fue recongelado con el análisis completo (ID: ${resBarrido.barridoId || '—'}).\n\n` +
           `NADA SALIÓ AUTOMÁTICAMENTE AL PROSPECTO. Podés revisar el bloque comparativo en ${APP()}/competencia y preparar un seguimiento si corresponde.`
         );
+
+        // Si el lead tiene email, se prepara la propuesta de seguimiento y va a Aprobaciones (NUNCA enviar directo)
+        if (item.email) {
+          const intento = {
+            leadId: placeId,
+            canal: 'email',
+            tipo: 'seguimiento_barrido',
+            destinatario: item.email,
+            asunto: `Actualizamos el análisis de competencia para ${item.negocio}`,
+            cuerpo: `Hola, vimos que revisaste el informe de auditoría de ${item.negocio}.\n\nCompletamos el análisis frente a tus 5 competidores más cercanos. Podés ver el informe actualizado con los datos de tu zona.`,
+            agente: 'redactor',
+            paso: 2,
+          };
+          const v = await evaluar(intento);
+          if (v.veredicto === VEREDICTO.APROBACION || v.veredicto === VEREDICTO.PERMITIDO || v.veredicto === VEREDICTO.DIFERIDO) {
+            await db.agregar('Aprobaciones', {
+              id: `aprob_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+              lead_id: placeId,
+              canal: 'email',
+              tipo: 'seguimiento_barrido',
+              destinatario: item.email,
+              asunto: intento.asunto,
+              cuerpo: intento.cuerpo,
+              decision: 'PENDIENTE',
+              regla_bloqueante: null,
+              huella: huella(intento),
+            });
+          }
+        }
 
         procesados++;
       } catch (e) {
