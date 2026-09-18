@@ -193,11 +193,28 @@ export async function POST(req) {
   }
 
   if (conInforme) {
+    let muestraBarrido = null;
+    try {
+      const { obtenerMuestraBarrido } = await import('../../../lib/integrations/barrido-engine.js');
+      muestraBarrido = await obtenerMuestraBarrido({
+        placeId: perfil.placeId,
+        lat: perfil.latitud ?? perfil.location?.latitude,
+        lng: perfil.longitud ?? perfil.location?.longitude,
+        categoria: perfil.categoriaPrimariaLabel || perfil.categoriaPrimaria || 'comercio local',
+        ciudad: ciudad || '',
+        perfil,
+        fuenteDatos: db,
+      });
+    } catch {
+      muestraBarrido = null;
+    }
+
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://lokigi.vercel.app').replace(/\/$/, '');
     salida.informeHTML = generarInformeHTML(resultado, {
       agencia: process.env.AGENCIA_NOMBRE || 'Lokigi',
       remitente: process.env.AGENCIA_REMITENTE || '',
       ctaUrl: `${appUrl}/#pedir`,
+      muestraBarrido,
     });
   }
 
