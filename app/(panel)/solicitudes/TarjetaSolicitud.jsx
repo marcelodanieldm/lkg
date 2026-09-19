@@ -100,6 +100,7 @@ export default function TarjetaSolicitud({ s }) {
         {!s.nota && (
           <form onSubmit={handleAuditar} style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginBottom: 12 }}>
             <input type="hidden" name="id" value={s.id} />
+            <input type="hidden" name="placeId" value={s.place_id || s.placeId || ''} />
             <input type="hidden" name="negocio" value={s.negocio} />
             <input type="hidden" name="ciudad" value={s.ciudad || ''} />
             <input type="hidden" name="email" value={s.email || ''} />
