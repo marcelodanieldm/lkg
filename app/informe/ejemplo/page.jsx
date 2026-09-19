@@ -36,6 +36,28 @@ export default function InformeDeEjemplo() {
     agencia: process.env.AGENCIA_NOMBRE || 'Lokigi',
     remitente: process.env.AGENCIA_PERSONA || '',
     ctaUrl: '/#pedir',
+    comparacion: {
+      posicion: 3,
+      total: 8,
+      porDimension: {
+        fundamentos: { nombre: 'Fundamentos del perfil', propio: 45, competencia: 75, delta: -30 },
+        reputacion: { nombre: 'Reputación y reseñas', propio: 40, competencia: 68, delta: -28 },
+        visual: { nombre: 'Contenido visual', propio: 19, competencia: 60, delta: -41 },
+        actividad: { nombre: 'Actividad y frescura', propio: 0, competencia: 45, delta: -45 },
+        conversion: { nombre: 'Conversión y atención', propio: 20, competencia: 50, delta: -30 },
+        web: { nombre: 'Presencia digital extendida', propio: 0, competencia: 55, delta: -55 },
+      },
+    },
+    muestraBarrido: {
+      total: 38,
+      categoria: 'Panadería',
+      pocoCompetida: false,
+      hechos: [
+        '31 de 38 declaran sitio web. Vos no.',
+        '24 de 38 tienen más de 40 reseñas. Vos tenés 27.',
+        '18 de 38 publicaron fotos en los últimos 90 días. Tu última foto es de hace 420 días.',
+      ],
+    },
   });
 
   const { alcance, cuerpo, estilos } = embutirInforme(html);
