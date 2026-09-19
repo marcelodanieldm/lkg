@@ -18,6 +18,7 @@ const PANTALLAS = [
   ['/leads', 'Leads'],
   ['/competencia', 'Competencia'],
   ['/simulacro', 'Simulacro'],
+  ['/guia', 'Guía'],
 ];
 
 export default function Nav() {
