@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { calcularDistancia, generarCeldaGeo, compararPorRegla } from '../lib/core/competencia.js';
+import { calcularDistancia, generarCeldaGeo, compararPorRegla, calcularAnillosDistancia, calcularCoberturaHoraria, extraerHorarios, estaAbiertoEnFranja } from '../lib/core/competencia.js';
 import { ejecutarBarrido } from '../lib/integrations/barrido-engine.js';
 import { auditar } from '../lib/core/audit-engine.js';
 import { PERFILES_DEMO } from '../lib/core/demo.js';
@@ -329,6 +329,71 @@ test('el umbral de entrada no menciona buscadores ni promesas de posición y pas
     asunto: 'Asunto válido de prueba para el linter'
   });
   assert.equal(linterRes.limpio, true, `El linter rechazó el umbral de entrada: ${linterRes.errores.join(', ')}`);
+});
+
+test('un anillo con menos de 3 negocios no publica posición', () => {
+  const propia = auditar(PERFILES_DEMO.estudio);
+
+  // 1 competidor en 500m (total 2 negocios en anillo 500m), 10 competidores en radio medio/amplio
+  const compList = [
+    { placeId: 'comp_cercano_1', nombre: 'Comp 1', distanciaMetros: 300, anillo: 'cercano', auditoria: auditar(PERFILES_DEMO.panaderia) },
+    ...Array.from({ length: 10 }, (_, i) => ({
+      placeId: `comp_medio_${i + 1}`,
+      nombre: `Comp Medio ${i + 1}`,
+      distanciaMetros: 1000 + i * 100,
+      anillo: 'amplio',
+      auditoria: auditar(PERFILES_DEMO.estudio),
+    }))
+  ];
+
+  const res = compararPorRegla(propia, compList);
+  assert.ok(res.anillosDistancia, 'Debe calcular anillos de distancia');
+  assert.equal(res.anillosDistancia.anillo500m.sePublicaPosicion, false, 'Un anillo con 2 negocios en total no debe publicar posición');
+  assert.equal(res.anillosDistancia.anillo500m.posicion, null, 'Posición debe ser null si no publica posición');
+  assert.ok(res.anillosDistancia.anillo500m.texto.includes('1 competidor'), 'Debe informar la cantidad de competidores');
+});
+
+test('un negocio sin horarios declarados no cuenta como cerrado en ninguna franja', () => {
+  const propia = { ...auditar(PERFILES_DEMO.estudio), horarios: [{ dia: 1, abre: 9, cierra: 18 }] };
+
+  // 5 competidores: 3 con horarios declarados, 2 sin horarios declarados (horarios: null / [])
+  const compList = [
+    { placeId: 'c1', nombre: 'Comp 1', horarios: [{ dia: 0, abre: 9, cierra: 14 }] },
+    { placeId: 'c2', nombre: 'Comp 2', horarios: [{ dia: 0, abre: 10, cierra: 18 }] },
+    { placeId: 'c3', nombre: 'Comp 3', horarios: [{ dia: 1, abre: 9, cierra: 18 }] },
+    { placeId: 'c4', nombre: 'Comp 4 (sin horarios)', horarios: null },
+    { placeId: 'c5', nombre: 'Comp 5 (sin horarios)', horarios: [] },
+  ];
+
+  // Verificar extractor
+  assert.equal(extraerHorarios(compList[3]), null, 'Extractor debe devolver null para sin horarios');
+  assert.equal(extraerHorarios(compList[4]), null, 'Extractor debe devolver null para arreglo vacío');
+
+  const res = calcularCoberturaHoraria(propia, compList, 'veterinarias');
+  assert.ok(res, 'Debe calcular cobertura horaria');
+  assert.equal(res.excluidosSinHorario, 2, 'Debe identificar exactamente 2 perfiles excluidos por no declarar horarios');
+  assert.equal(res.totalEvaluadosConHorario, 4, 'Debe evaluar sólo 4 perfiles con horario definido (1 propio + 3 competidores)');
+});
+
+test('el informe declara cuántos perfiles se excluyeron de cada conteo horario', () => {
+  const propia = { ...auditar(PERFILES_DEMO.estudio), horarios: [{ dia: 1, abre: 9, cierra: 18 }] };
+
+  const compList = [
+    { placeId: 'c1', nombre: 'Comp 1', horarios: [{ dia: 0, abre: 9, cierra: 14 }] },
+    { placeId: 'c2', nombre: 'Comp 2', horarios: [{ dia: 0, abre: 10, cierra: 18 }] },
+    { placeId: 'c3', nombre: 'Comp 3', horarios: [{ dia: 0, abre: 8, cierra: 20 }] },
+    { placeId: 'c4', nombre: 'Comp 4 (sin horarios)', horarios: null },
+    { placeId: 'c5', nombre: 'Comp 5 (sin horarios)', horarios: null },
+    { placeId: 'c6', nombre: 'Comp 6 (sin horarios)', horarios: null },
+  ];
+
+  const res = calcularCoberturaHoraria(propia, compList, 'veterinarias');
+  assert.ok(res.sePublica, 'Debe publicarse si hay brecha o ventaja');
+  assert.equal(res.excluidosSinHorario, 3, 'Debe registrar 3 excluidos');
+
+  for (const franja of res.franjasDestacadas) {
+    assert.ok(franja.texto.includes('3 perfiles excluidos por no declarar horarios'), `El texto de la franja "${franja.nombre}" debe declarar los 3 perfiles excluidos: ${franja.texto}`);
+  }
 });
 
 // Auxiliares de prueba para simular ejecuciones aisladas

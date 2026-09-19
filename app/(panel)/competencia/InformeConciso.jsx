@@ -167,6 +167,9 @@ export default function InformeConciso({ barridoRes }) {
               </li>
             ))}
           </ul>
+        )}
+      </div>
+
       {/* g) TRES NUEVOS ANÁLISIS DE DISTRIBUCIÓN */}
       {comparacion.huecoMercado && comparacion.huecoMercado.sePublica && comparacion.huecoMercado.huecos?.length > 0 && (
         <div style={styles.seccionEspecialD9}>
@@ -193,6 +196,42 @@ export default function InformeConciso({ barridoRes }) {
         <div style={styles.seccionEspecialGreen}>
           <h3 style={styles.subtituloGreen}>🎯 El Umbral de Entrada</h3>
           <p style={styles.textoDestacado}>{comparacion.umbralEntrada.texto}</p>
+        </div>
+      )}
+
+      {comparacion.anillosDistancia && comparacion.anillosDistancia.sePublica && (
+        <div style={styles.seccionEspecialSky}>
+          <h3 style={styles.subtituloSky}>📍 Anillos de Distancia (Proximidad Real)</h3>
+          <ul style={{ ...styles.listaPuntos, margin: '8px 0 0 0' }}>
+            {comparacion.anillosDistancia.anillo500m?.texto && (
+              <li style={styles.itemAmber}><span>⭕</span><div>{comparacion.anillosDistancia.anillo500m.texto}</div></li>
+            )}
+            {comparacion.anillosDistancia.anillo1500m?.texto && (
+              <li style={styles.itemAmber}><span>⭕</span><div>{comparacion.anillosDistancia.anillo1500m.texto}</div></li>
+            )}
+            {comparacion.anillosDistancia.anillo4000m?.texto && (
+              <li style={styles.itemAmber}><span>⭕</span><div>{comparacion.anillosDistancia.anillo4000m.texto}</div></li>
+            )}
+          </ul>
+          {comparacion.anillosDistancia.diagnosticoContradiccion && (
+            <p style={{ ...styles.textoDestacado, marginTop: '10px', fontWeight: 'bold' }}>
+              Diagnóstico: {comparacion.anillosDistancia.diagnosticoContradiccion}
+            </p>
+          )}
+        </div>
+      )}
+
+      {comparacion.coberturaHoraria && comparacion.coberturaHoraria.sePublica && comparacion.coberturaHoraria.franjasDestacadas?.length > 0 && (
+        <div style={styles.seccionEspecialD9}>
+          <h3 style={styles.subtituloAmber}>⏰ Cobertura Horaria de la Zona</h3>
+          <ul style={styles.listaPuntos}>
+            {comparacion.coberturaHoraria.franjasDestacadas.map(f => (
+              <li key={f.id} style={styles.itemAmber}>
+                <span>🕒</span>
+                <div>{f.texto}</div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
