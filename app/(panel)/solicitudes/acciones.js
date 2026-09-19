@@ -54,7 +54,7 @@ export async function auditarSolicitud(formData) {
     if (!res.ok || !data.placeId) {
       const msg = data.error || 'No se pudo obtener la auditoría del perfil de Google Maps';
       await atenderSolicitud(id, 'auditada', `Error: ${msg}`).catch(() => {});
-      throw new Error(msg);
+      return { ok: false, error: msg };
     }
 
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://lokigi.vercel.app').replace(/\/$/, '');
@@ -145,10 +145,12 @@ export async function auditarSolicitud(formData) {
     await atenderSolicitud(id, 'auditada', notaFinal, data.placeId).catch(async () => {
       await atenderSolicitud(id, 'auditada', notaFinal || `Place ID: ${data.placeId}`);
     });
+
+    return { ok: true, placeId: data.placeId, nota: notaFinal };
   } catch (err) {
     console.error(`Excepción en auditarSolicitud "${negocio}":`, err);
     await atenderSolicitud(id, 'auditada', `Excepción: ${err.message}`).catch(() => {});
-    throw err;
+    return { ok: false, error: err.message || String(err) };
   } finally {
     revalidatePath('/solicitudes');
     revalidatePath('/leads');
@@ -161,22 +163,32 @@ export async function descartarSolicitud(formData) {
   await requerirSesion();
 
   const id = formData.get('id');
-  if (!id) throw new Error('ID de solicitud requerido');
+  if (!id) return { ok: false, error: 'ID de solicitud requerido' };
 
-  await atenderSolicitud(id, 'descartada');
-
-  revalidatePath('/solicitudes');
-  revalidatePath('/panel');
+  try {
+    await atenderSolicitud(id, 'descartada');
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message || String(err) };
+  } finally {
+    revalidatePath('/solicitudes');
+    revalidatePath('/panel');
+  }
 }
 
 export async function contactarSolicitud(formData) {
   await requerirSesion();
 
   const id = formData.get('id');
-  if (!id) throw new Error('ID de solicitud requerido');
+  if (!id) return { ok: false, error: 'ID de solicitud requerido' };
 
-  await atenderSolicitud(id, 'contactada');
-
-  revalidatePath('/solicitudes');
-  revalidatePath('/panel');
+  try {
+    await atenderSolicitud(id, 'contactada');
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message || String(err) };
+  } finally {
+    revalidatePath('/solicitudes');
+    revalidatePath('/panel');
+  }
 }

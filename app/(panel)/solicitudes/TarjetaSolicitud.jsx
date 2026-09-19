@@ -16,11 +16,15 @@ export default function TarjetaSolicitud({ s }) {
     const enviarEmail = formData.get('enviarEmail') === 'on' || formData.get('enviarEmail') === 'true';
 
     try {
-      await auditarSolicitud(formData);
-      if (enviarEmail && email) {
-        alert(`✅ Se auditó el perfil y se confirmó el envío del mail a ${email}.\n\nLead creado e informe congelado en el sistema.`);
+      const res = await auditarSolicitud(formData);
+      if (res && res.ok) {
+        if (enviarEmail && email) {
+          alert(`✅ Se auditó el perfil y se confirmó el envío del mail a ${email}.\n\nLead creado e informe congelado en el sistema.`);
+        } else {
+          alert(`✅ Auditoría completada con éxito.\n\nLead creado en el CRM para ${s.negocio}.`);
+        }
       } else {
-        alert(`✅ Auditoría completada con éxito.\n\nLead creado en el CRM para ${s.negocio}.`);
+        alert(`❌ Falló la auditoría de la solicitud (${s.negocio}):\n\nOrigen del fallo: ${res?.error || 'Error en el servidor'}`);
       }
     } catch (err) {
       alert(`❌ Falló la auditoría de la solicitud (${s.negocio}):\n\nOrigen del fallo: ${err.message || err}`);
@@ -34,8 +38,12 @@ export default function TarjetaSolicitud({ s }) {
     setCargandoDescartar(true);
     try {
       const formData = new FormData(e.currentTarget);
-      await descartarSolicitud(formData);
-      alert(`✅ Solicitud de ${s.negocio} descartada exitosamente.`);
+      const res = await descartarSolicitud(formData);
+      if (res && res.ok) {
+        alert(`✅ Solicitud de ${s.negocio} descartada exitosamente.`);
+      } else {
+        alert(`❌ Falló al descartar la solicitud (${s.negocio}):\n\nOrigen del fallo: ${res?.error || 'Error en el servidor'}`);
+      }
     } catch (err) {
       alert(`❌ Falló al descartar la solicitud (${s.negocio}):\n\nOrigen del fallo: ${err.message || err}`);
     } finally {
@@ -48,8 +56,12 @@ export default function TarjetaSolicitud({ s }) {
     setCargandoContactar(true);
     try {
       const formData = new FormData(e.currentTarget);
-      await contactarSolicitud(formData);
-      alert(`✅ Solicitud de ${s.negocio} marcada como contactada.`);
+      const res = await contactarSolicitud(formData);
+      if (res && res.ok) {
+        alert(`✅ Solicitud de ${s.negocio} marcada como contactada.`);
+      } else {
+        alert(`❌ Falló al marcar como contactada (${s.negocio}):\n\nOrigen del fallo: ${res?.error || 'Error en el servidor'}`);
+      }
     } catch (err) {
       alert(`❌ Falló al marcar como contactada (${s.negocio}):\n\nOrigen del fallo: ${err.message || err}`);
     } finally {
