@@ -74,8 +74,6 @@ export async function auditarSolicitud(formData) {
       potencial: data.potencial ?? null,
       percentil: data.percentil?.percentil ?? (typeof data.percentil === 'number' ? data.percentil : null),
       etapa: debeEnviar ? 'contactado' : 'auditado',
-      auditado_en: new Date().toISOString(),
-      ...(debeEnviar ? { contactado_en: new Date().toISOString() } : {}),
       informe_url: informeUrl,
       actualizado_en: new Date().toISOString(),
     });
