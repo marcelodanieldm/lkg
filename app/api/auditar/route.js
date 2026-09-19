@@ -139,7 +139,13 @@ export async function POST(req) {
   if (perfil.sitioWeb) {
     // Un sitio caído no invalida la auditoría: las reglas que dependen de él
     // quedan como "no verificado" y salen del denominador.
-    perfil = aplicarAnalisisWeb(perfil, await analizarSitio(perfil.sitioWeb).catch(() => null));
+    try {
+      const { analizarSitio } = await import('../../../lib/integrations/website-audit.js');
+      const webRes = await analizarSitio(perfil.sitioWeb).catch(() => null);
+      perfil = aplicarAnalisisWeb(perfil, webRes);
+    } catch (e) {
+      console.error('Error al importar o ejecutar analizarSitio:', e);
+    }
   }
 
   const resultado = auditar(perfil);
