@@ -45,8 +45,11 @@ export default function CompetenciaPage() {
     try {
       const est = await estimarBarridoAction(placeIdInput.trim(), Number(radioMetros));
       setEstimacion(est);
+      alert(`✅ Pre-flight de estimación calculado exitosamente para ${est.nombre || placeIdInput}.`);
     } catch (err) {
-      setErrorMsg(err.message);
+      const msg = err.message || err;
+      setErrorMsg(msg);
+      alert(`❌ Falló la estimación del barrido:\n\nOrigen del fallo: ${msg}`);
     } finally {
       setCargandoEst(false);
     }
@@ -64,11 +67,14 @@ export default function CompetenciaPage() {
       });
 
       if (res.cancelado) {
-        setErrorMsg(`Barrido cancelado: Presupuesto API excedido (Gasto actual USD $${res.gastoActualUSD} / Límite USD $${res.presupuestoUSD})`);
+        const cancelMsg = `Barrido cancelado: Presupuesto API excedido (Gasto actual USD $${res.gastoActualUSD} / Límite USD $${res.presupuestoUSD})`;
+        setErrorMsg(cancelMsg);
+        alert(`❌ ${cancelMsg}`);
         return;
       }
 
       setBarridoRes(res);
+      alert(`✅ Barrido de competidores completado exitosamente (ID: ${res.barridoId || 'Caché'}).`);
 
       // Cargar lista para prospección manual si hay ID de barrido
       if (res.barridoId) {
@@ -77,7 +83,9 @@ export default function CompetenciaPage() {
         setSeleccionados({});
       }
     } catch (err) {
-      setErrorMsg(err.message);
+      const msg = err.message || err;
+      setErrorMsg(msg);
+      alert(`❌ Falló la ejecución del barrido:\n\nOrigen del fallo: ${msg}`);
     } finally {
       setCargandoBarrido(false);
     }
@@ -96,11 +104,15 @@ export default function CompetenciaPage() {
     setMensajeEnc(null);
     try {
       const r = await encolarCompetidoresSeleccionadosAction(aEncolar, barridoRes?.barridoId);
-      setMensajeEnc(`✅ ${r.agregados} competidor(es) agregados a la cola de prospección.`);
+      const exitoMsg = `✅ ${r.agregados} competidor(es) agregados a la cola de prospección.`;
+      setMensajeEnc(exitoMsg);
+      alert(exitoMsg);
       // Desmarcar seleccionados
       setSeleccionados({});
     } catch (err) {
-      setErrorMsg(err.message);
+      const msg = err.message || err;
+      setErrorMsg(msg);
+      alert(`❌ Falló la incorporación a la cola de prospección:\n\nOrigen del fallo: ${msg}`);
     }
   }
 

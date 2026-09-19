@@ -13,6 +13,8 @@ export const maxDuration = 60;
  * está en la lista de supresión (nota presente), se marca con aviso stop y
  * NO se ofrece la acción de auditar para evitar contactos no deseados.
  */
+import TarjetaSolicitud from './TarjetaSolicitud.jsx';
+
 export default async function Solicitudes() {
   await requerirSesion();
   const resSol = await solicitudesNuevas().catch(() => []);
@@ -39,88 +41,7 @@ export default async function Solicitudes() {
       </p>
 
       {solicitudes.map(s => (
-        <article className="aprob" key={s.id}>
-          <header>
-            <h3>{s.negocio}</h3>
-            <span className="meta">
-              {s.ciudad || 'Sin ciudad'} · {s.cuando}
-            </span>
-          </header>
-
-          <div className="meta" style={{ marginBottom: 4 }}>
-            <b>Contacto:</b> {s.email}{s.telefono ? ` · Tel: ${s.telefono}` : ''}
-          </div>
-
-          {s.motivo_busqueda && (
-            <div className="aviso-motivo-destacado" style={{ background: '#f0fdf4', border: '1px solid #86efac', padding: '10px 14px', borderRadius: 8, margin: '10px 0', color: '#166534' }}>
-              <b style={{ display: 'block', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#15803d', marginBottom: 2 }}>
-                💬 ¿Por qué busca esto? (Respuesta del prospecto):
-              </b>
-              <span style={{ fontSize: 14, fontWeight: 600 }}>"{s.motivo_busqueda}"</span>
-            </div>
-          )}
-
-          {s.mensaje && (
-            <div className="motivo">
-              <b>Mensaje:</b> {s.mensaje}
-            </div>
-          )}
-
-          {s.nota && (
-            <div className="aviso stop" style={{ marginTop: 12 }}>
-              <span className="lab">Atención</span>
-              <p>
-                <b>Dirección en lista de supresión:</b> {s.nota}
-              </p>
-            </div>
-          )}
-
-          <div className="acciones">
-            {!s.nota && (
-              <form action={auditarSolicitud} style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginBottom: 12 }}>
-                <input type="hidden" name="id" value={s.id} />
-                <input type="hidden" name="negocio" value={s.negocio} />
-                <input type="hidden" name="ciudad" value={s.ciudad || ''} />
-                <input type="hidden" name="email" value={s.email || ''} />
-
-                <div style={{ background: 'var(--sub-bg, rgba(255,255,255,0.03))', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--borde, #e5e7eb)' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13.5, fontWeight: 500 }}>
-                    <input type="checkbox" name="enviarEmail" defaultChecked style={{ width: 16, height: 16 }} />
-                    Enviar informe por email a <b>{s.email}</b> al terminar de auditar
-                  </label>
-
-                  <textarea
-                    name="mensajePersonalizado"
-                    placeholder="Mensaje personalizado opcional (ej: Hola! Analicé tu perfil y te adjunto la auditoría completa con recomendaciones)..."
-                    rows={2}
-                    className="campo"
-                    style={{ marginTop: 8, width: '100%', fontSize: 13, resize: 'vertical' }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="aprobar" type="submit">
-                    Auditar y procesar
-                  </button>
-                </div>
-              </form>
-            )}
-
-            <form action={descartarSolicitud}>
-              <input type="hidden" name="id" value={s.id} />
-              <button className="rechazar" type="submit">
-                Descartar
-              </button>
-            </form>
-
-            <form action={contactarSolicitud}>
-              <input type="hidden" name="id" value={s.id} />
-              <button className="sec" type="submit">
-                Ya la contacté
-              </button>
-            </form>
-          </div>
-        </article>
+        <TarjetaSolicitud key={s.id} s={s} />
       ))}
     </main>
   );

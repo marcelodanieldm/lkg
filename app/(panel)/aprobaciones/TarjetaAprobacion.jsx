@@ -20,6 +20,24 @@ export default function TarjetaAprobacion({ a, haceTexto }) {
   const [cuerpo, setCuerpo] = useState(a.cuerpo || '');
   const [cargando, setCargando] = useState(false);
 
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setCargando(true);
+    try {
+      const formData = new FormData(e.currentTarget);
+      await decidir(formData);
+      if (paso === 'APROBADO') {
+        alert(`✅ Se confirmó la aprobación y envío del mail a ${a.destinatario}.\n\nAsunto: ${asunto || 'Sin asunto'}`);
+      } else if (paso === 'RECHAZADO') {
+        alert(`✅ Se rechazó y descartó el mensaje para ${a.destinatario}.`);
+      }
+    } catch (err) {
+      alert(`❌ Falló la acción en Aprobaciones:\n\nOrigen del fallo: ${err.message || err}`);
+    } finally {
+      setCargando(false);
+    }
+  }
+
   return (
     <article className="aprob">
       <header>
@@ -37,7 +55,7 @@ export default function TarjetaAprobacion({ a, haceTexto }) {
         {a.advertencias && <><br /><b>Linter:</b> {a.advertencias}</>}
       </div>
 
-      <form action={decidir} onSubmit={() => setCargando(true)}>
+      <form onSubmit={handleSubmit}>
         <input type="hidden" name="id" value={a.id} />
         {paso && <input type="hidden" name="decision" value={paso} />}
 
