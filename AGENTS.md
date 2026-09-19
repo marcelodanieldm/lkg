@@ -31,7 +31,7 @@ rompe la propiedad central del sistema. Hay tres tests llamados
 
 ```bash
 npm run dev        # desarrollo en localhost:3000 (la landing en /, el panel en /panel)
-npm test           # 78 tests (motor · guardrails · stack web)
+npm test           # 150 tests (motor · guardrails · stack web · embudo)
 npm run verificar  # preflight: entorno, base, Google, los 4 casos que bloquean
 npm run auth       # genera el refresh token de Google, una sola vez
 npm run build      # compilar
@@ -137,6 +137,39 @@ Places API + sitio web + captura asistida
   explica quién le escribió. Hay un test que lo impide.
 - **`/simulacro` no envía nada.** La pantalla `/simulacro` evalúa la cola en memoria sin importar `gmail.js` ni llamar a `enviar()`. La cuota diaria se acumula en un estado simulado local para que las filas sobrantes se muestren correctamente como `DIFERIDO`. Un test de `PROPIEDAD CRÍTICA` asegura que la pantalla no importe el cliente de correo.
 - **El disparo del barrido automático sale del navegador, nunca del servidor.** El servidor no dispara el barrido al renderizar `/informe/[id]`: los escáneres de enlaces de los antivirus corporativos visitan todas las URLs de un correo antes de entregarlo y agotarían la cuota de la API de Places procesando informes no leídos. Por eso el disparo sale del navegador mediante un script cliente solo al cumplir permanencia mínima ($\ge 10$ s) y scroll ($\ge 25\%$). La señal tampoco corre el barrido síncronamente: encola la solicitud como `pendiente` para que una tarea programada desacoplada la procese en segundo plano.
+
+## El embudo de seis etapas
+
+Una etapa es un **hecho verificable**, no una opinión. Cada etapa se dispara
+por un evento concreto — no por el juicio de nadie sobre "qué tan avanzado
+está" el prospecto.
+
+| Etapa | Hecho que la activa | Quién lo activa |
+|---|---|---|
+| `auditado` | Informe congelado en Postgres | Automático al auditar |
+| `contactado` | Primer mensaje salió por el guardián | Automático al enviar |
+| `leyo` | Permaneció ≥10 s y scrolleó ≥25 % en el informe | Automático (`registrar_visto_informe`) |
+| `conversando` | Contestó | Manual desde el panel |
+| `propuesta` | Cotización enviada | Manual desde el panel |
+| `cliente` | Paga | Manual desde el panel |
+| `perdido` | Se cierra sin conversión | Manual, **motivo obligatorio** (ver abajo) |
+| `baja` | Pidió la baja | Automático por trigger `proteger_opt_out` |
+
+**Motivos válidos para `perdido`** (exactamente estos cinco, verificado por constraint en Postgres):
+`precio` · `momento` · `ya tiene proveedor` · `nunca contestó` · `no era el decisor`
+
+**Plazos máximos por etapa** viven en la tabla `config` con claves
+`plazo_max_auditado`, `plazo_max_contactado`, etc. Se ajustan sin desplegar.
+
+**El lead nace en `auditado`**, no en `nuevo`. `nuevo` desapareció. Una solicitud
+que se audita desde `/solicitudes` crea el lead directamente en `auditado` con
+`auditado_en` poblado. La tabla `solicitudes` sigue existiendo como registro de
+consentimiento y cola de entrada, pero el lead vive en `leads` desde el primer
+segundo.
+
+La supresión sigue siendo irreversible: un trigger de Postgres rechaza revertir
+`opt_out`. El formulario público (`pedir_auditoria()`) nunca escribe en `leads`,
+y hay un test que lo verifica.
 
 ## Estilo
 

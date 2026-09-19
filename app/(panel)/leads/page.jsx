@@ -5,12 +5,12 @@ import { leerNotas } from '../../../lib/integrations/workspace.js';
 
 export const dynamic = 'force-dynamic';
 
-const ETAPAS = ['nuevo', 'auditado', 'contactado', 'respondio', 'interesado',
-                'presupuestado', 'negociando', 'ganado', 'perdido', 'baja'];
+const ETAPAS = ['auditado', 'contactado', 'leyo', 'conversando', 'propuesta',
+                'cliente', 'perdido', 'baja'];
 
 const TONO = {
-  ganado: 'go', interesado: 'go', presupuestado: 'a', negociando: 'a',
-  respondio: 'a', contactado: 'warn', perdido: 'n', baja: 'stop',
+  cliente: 'go', conversando: 'go', propuesta: 'a',
+  leyo: 'a', contactado: 'warn', auditado: 'n', perdido: 'n', baja: 'stop',
 };
 
 /** Clase y no literal: los tokens cambian entre claro y oscuro. */
@@ -125,6 +125,7 @@ export default async function Leads({ searchParams }) {
                 <tr>
                   <th>Negocio</th>
                   <th>Etapa</th>
+                  <th className="n">Etapa desde</th>
                   <th className="n">Puntaje</th>
                   <th className="n">Brecha</th>
                   <th className="n">Pctil</th>
@@ -145,6 +146,7 @@ export default async function Leads({ searchParams }) {
                       </div>
                     </td>
                     <td><span className={`chip ${TONO[l.etapa] || 'n'}`}>{l.etapa}</span></td>
+                    <td className="n s-nd">{fecha(l[`${l.etapa}_en`] || l.creado_en)}</td>
                     <td className={`n ${tono(l.score)}`}>{l.score ?? '—'}</td>
                     <td className="n s-nd">
                       {l.score != null && l.potencial != null ? `+${l.potencial - l.score}` : '—'}
