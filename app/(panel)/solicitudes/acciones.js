@@ -10,6 +10,8 @@ import { agenteSugeridorMensaje } from '../../../lib/ia/gemini.js';
 import { resumenCorto } from '../../../lib/core/report.js';
 import { huella, evaluar, VEREDICTO, usarFuente } from '../../../lib/guardrails/guard.js';
 
+usarFuente(db);
+
 /**
  * Acciones de servidor para la pantalla /solicitudes.
  *

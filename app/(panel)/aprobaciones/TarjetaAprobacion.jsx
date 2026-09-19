@@ -25,11 +25,15 @@ export default function TarjetaAprobacion({ a, haceTexto }) {
     setCargando(true);
     try {
       const formData = new FormData(e.currentTarget);
-      await decidir(formData);
-      if (paso === 'APROBADO') {
-        alert(`✅ Se confirmó la aprobación y envío del mail a ${a.destinatario}.\n\nAsunto: ${asunto || 'Sin asunto'}`);
-      } else if (paso === 'RECHAZADO') {
-        alert(`✅ Se rechazó y descartó el mensaje para ${a.destinatario}.`);
+      const res = await decidir(formData);
+      if (res && res.ok) {
+        if (paso === 'APROBADO') {
+          alert(`✅ Se confirmó la aprobación y envío del mail a ${a.destinatario}.\n\nAsunto: ${asunto || 'Sin asunto'}`);
+        } else if (paso === 'RECHAZADO') {
+          alert(`✅ Se rechazó y descartó el mensaje para ${a.destinatario}.`);
+        }
+      } else {
+        alert(`❌ Falló la acción en Aprobaciones:\n\nOrigen del fallo: ${res?.error || 'Error en el servidor'}`);
       }
     } catch (err) {
       alert(`❌ Falló la acción en Aprobaciones:\n\nOrigen del fallo: ${err.message || err}`);
