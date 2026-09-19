@@ -24,22 +24,48 @@ const hace = (iso) => {
  * campo `enviado_en` permanezca en nulo, la aprobación se puede revertir con el
  * botón "Deshacer".
  */
-export default async function Aprobaciones() {
+import Link from 'next/link';
+
+export default async function Aprobaciones({ searchParams }) {
   await requerirSesion();
+  const q = await searchParams;
+  const orden = q?.orden || 'reciente';
+  const pagina = Math.max(1, parseInt(q?.pagina || '1', 10));
+  const TAMANO_PAGINA = 10;
+
   const [resPend, resAprob] = await Promise.all([
     pendientesDeAprobacion().catch(() => []),
     aprobadasSinEnviar().catch(() => []),
   ]);
-  const pendientes = Array.isArray(resPend) ? resPend : [];
+  const pendientesRaw = Array.isArray(resPend) ? [...resPend] : [];
   const aprobadas = Array.isArray(resAprob) ? resAprob : [];
 
+  pendientesRaw.sort((a, b) => {
+    const tA = new Date(a.creado_en || 0).getTime();
+    const tB = new Date(b.creado_en || 0).getTime();
+    return orden === 'viejo' ? tA - tB : tB - tA;
+  });
+
+  const totalPaginas = Math.ceil(pendientesRaw.length / TAMANO_PAGINA) || 1;
+  const paginaActual = Math.min(pagina, totalPaginas);
+  const inicio = (paginaActual - 1) * TAMANO_PAGINA;
+  const pendientes = pendientesRaw.slice(inicio, inicio + TAMANO_PAGINA);
+
   const minRestantesCron = 15 - (new Date().getMinutes() % 15);
+
+  const buildUrl = (paramsObj) => {
+    const p = new URLSearchParams();
+    if (orden && orden !== 'reciente') p.set('orden', orden);
+    if (paramsObj.pagina > 1) p.set('pagina', String(paramsObj.pagina));
+    const str = p.toString();
+    return str ? `/aprobaciones?${str}` : '/aprobaciones';
+  };
 
   return (
     <main>
       <h1>Aprobaciones</h1>
       <p className="sub">
-        {pendientes.length} mensaje{pendientes.length !== 1 ? 's' : ''} esperando revisión
+        {pendientesRaw.length} mensaje{pendientesRaw.length !== 1 ? 's' : ''} esperando revisión
         {aprobadas.length > 0 ? ` · ${aprobadas.length} aprobado(s) pendiente(s) de salida` : ''}.
       </p>
 
@@ -96,16 +122,29 @@ export default async function Aprobaciones() {
         </section>
       )}
 
-      <h2>Esperando revisión ({pendientes.length})</h2>
+      <h2>Esperando revisión ({pendientesRaw.length})</h2>
 
-      {pendientes.length === 0 ? (
+      {pendientesRaw.length > 0 && (
+        <form className="filtros" style={{ marginBottom: 20 }}>
+          <select name="orden" defaultValue={orden} className="campo" aria-label="Ordenamiento">
+            <option value="reciente">Más recientes primero</option>
+            <option value="viejo">Más viejos primero</option>
+          </select>
+          <button type="submit" className="sec">Filtrar</button>
+          {orden && orden !== 'reciente' && (
+            <Link href="/aprobaciones" className="boton sec" style={{ textDecoration: 'none' }}>Limpiar</Link>
+          )}
+        </form>
+      )}
+
+      {pendientesRaw.length === 0 ? (
         <div className="vacio">
           <b>No hay nada esperando</b>
           Cuando el guardián marque un mensaje para revisión, aparecerá acá.
         </div>
       ) : (
         <>
-          {pendientes.filter(p => Date.now() - new Date(p.creado_en).getTime() > 24 * 3600e3).length > 0 && (
+          {pendientesRaw.filter(p => Date.now() - new Date(p.creado_en).getTime() > 24 * 3600e3).length > 0 && (
             <div className="aviso stop" style={{ marginBottom: 18 }}>
               <span className="lab">Atención</span>
               <p>
@@ -117,6 +156,30 @@ export default async function Aprobaciones() {
           {pendientes.map(a => (
             <TarjetaAprobacion key={a.id} a={a} haceTexto={hace(a.creado_en)} />
           ))}
+
+          {totalPaginas > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, flexWrap: 'wrap', gap: 12 }}>
+              <span style={{ fontSize: 13.5, color: 'var(--muted)' }}>
+                Página {paginaActual} de {totalPaginas} ({pendientesRaw.length} pendientes en total)
+              </span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {paginaActual > 1 ? (
+                  <Link href={buildUrl({ pagina: paginaActual - 1 })} className="boton sec" style={{ textDecoration: 'none', padding: '6px 14px' }}>
+                    ◄ Anterior
+                  </Link>
+                ) : (
+                  <span className="boton sec" style={{ opacity: 0.4, cursor: 'not-allowed', padding: '6px 14px' }}>◄ Anterior</span>
+                )}
+                {paginaActual < totalPaginas ? (
+                  <Link href={buildUrl({ pagina: paginaActual + 1 })} className="boton sec" style={{ textDecoration: 'none', padding: '6px 14px' }}>
+                    Siguiente ►
+                  </Link>
+                ) : (
+                  <span className="boton sec" style={{ opacity: 0.4, cursor: 'not-allowed', padding: '6px 14px' }}>Siguiente ►</span>
+                )}
+              </div>
+            </div>
+          )}
         </>
       )}
     </main>

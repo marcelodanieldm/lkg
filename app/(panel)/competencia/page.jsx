@@ -33,6 +33,9 @@ export default function CompetenciaPage() {
   const [mensajeEnc, setMensajeEnc] = useState(null);
   const [copiado, setCopiado] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [ordenComp, setOrdenComp] = useState('reciente');
+  const [paginaComp, setPaginaComp] = useState(1);
+  const ITEMS_PER_PAGE_COMP = 10;
 
   // 1. Estimar barrido (Pre-flight de costos sin gastar llamadas de búsqueda)
   async function handleEstimar(e) {
@@ -81,6 +84,7 @@ export default function CompetenciaPage() {
         const compList = await obtenerEstadoProspeccionCompetidoresAction(res.barridoId).catch(() => []);
         setCompetidoresProspeccion(compList);
         setSeleccionados({});
+        setPaginaComp(1);
       }
     } catch (err) {
       const msg = err.message || err;
@@ -129,6 +133,24 @@ export default function CompetenciaPage() {
   const exportUrlAbs = barridoRes?.barridoId
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/api/barrido/${barridoRes.barridoId}/export`
     : '';
+
+  const competidoresOrdenados = [...competidoresProspeccion].sort((a, b) => {
+    if (ordenComp === 'viejo') return 0;
+    if (ordenComp === 'score_desc') return (b.score ?? -1) - (a.score ?? -1);
+    if (ordenComp === 'score_asc') return (a.score ?? 999) - (b.score ?? 999);
+    if (ordenComp === 'distancia_asc') return (a.distanciaMetros ?? 0) - (b.distanciaMetros ?? 0);
+    return 0;
+  });
+  if (ordenComp === 'viejo') {
+    competidoresOrdenados.reverse();
+  }
+
+  const totalPaginasComp = Math.ceil(competidoresOrdenados.length / ITEMS_PER_PAGE_COMP) || 1;
+  const pagActualComp = Math.min(paginaComp, totalPaginasComp);
+  const competidoresPaginados = competidoresOrdenados.slice(
+    (pagActualComp - 1) * ITEMS_PER_PAGE_COMP,
+    pagActualComp * ITEMS_PER_PAGE_COMP
+  );
 
   return (
     <div style={styles.container}>
@@ -242,10 +264,29 @@ export default function CompetenciaPage() {
       {/* Sección de Enrolamiento Manual a Prospección (NUNCA Automático) */}
       {barridoRes && competidoresProspeccion.length > 0 && (
         <div style={styles.prospeccionCard}>
-          <h3 style={styles.prospeccionTitulo}>➕ Agregar Competidores a la Cola de Prospección (Selección Manual)</h3>
-          <p style={styles.prospeccionDesc}>
-            Selecciona manualmente los negocios no clientes que deseas agregar a la cola de contacto. Ningún competidor se agrega de forma automática.
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+            <div>
+              <h3 style={styles.prospeccionTitulo}>➕ Agregar Competidores a la Cola de Prospección (Selección Manual)</h3>
+              <p style={styles.prospeccionDesc}>
+                Selecciona manualmente los negocios no clientes que deseas agregar a la cola de contacto. Ningún competidor se agrega de forma automática.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Ordenar por:</label>
+              <select
+                value={ordenComp}
+                onChange={e => { setOrdenComp(e.target.value); setPaginaComp(1); }}
+                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+              >
+                <option value="reciente">Más recientes primero</option>
+                <option value="viejo">Más viejos primero</option>
+                <option value="score_desc">Puntaje (Mayor a Menor)</option>
+                <option value="score_asc">Puntaje (Menor a Mayor)</option>
+                <option value="distancia_asc">Menor distancia</option>
+              </select>
+            </div>
+          </div>
 
           {mensajeEnc && <div style={styles.mensajeSuccess}>{mensajeEnc}</div>}
 
@@ -261,7 +302,7 @@ export default function CompetenciaPage() {
               </tr>
             </thead>
             <tbody>
-              {competidoresProspeccion.map(c => (
+              {competidoresPaginados.map(c => (
                 <tr key={c.placeId} style={styles.tr}>
                   <td style={styles.tdCenter}>
                     <input
@@ -294,13 +335,35 @@ export default function CompetenciaPage() {
             </tbody>
           </table>
 
-          <button
-            onClick={handleEncolarSeleccionados}
-            disabled={Object.values(seleccionados).filter(Boolean).length === 0}
-            style={styles.btnEncolar}
-          >
-            Agregar los tildados a la cola de prospección ({Object.values(seleccionados).filter(Boolean).length})
-          </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginTop: '16px' }}>
+            <button
+              onClick={handleEncolarSeleccionados}
+              disabled={Object.values(seleccionados).filter(Boolean).length === 0}
+              style={styles.btnEncolar}
+            >
+              Agregar los tildados a la cola de prospección ({Object.values(seleccionados).filter(Boolean).length})
+            </button>
+
+            {totalPaginasComp > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                <button
+                  onClick={() => setPaginaComp(p => Math.max(1, p - 1))}
+                  disabled={pagActualComp <= 1}
+                  style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f8fafc', cursor: pagActualComp <= 1 ? 'not-allowed' : 'pointer' }}
+                >
+                  ◄ Anterior
+                </button>
+                <span>Página {pagActualComp} de {totalPaginasComp}</span>
+                <button
+                  onClick={() => setPaginaComp(p => Math.min(totalPaginasComp, p + 1))}
+                  disabled={pagActualComp >= totalPaginasComp}
+                  style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f8fafc', cursor: pagActualComp >= totalPaginasComp ? 'not-allowed' : 'pointer' }}
+                >
+                  Siguiente ►
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
