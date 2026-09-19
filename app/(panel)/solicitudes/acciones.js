@@ -30,7 +30,7 @@ export async function auditarSolicitud(formData) {
 
   if (!id) throw new Error('ID de solicitud requerido');
 
-  const req = new Request('http://localhost/api/auditar', {
+  const req = new Request('https://lokigi.vercel.app/api/auditar', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -117,7 +117,7 @@ export async function auditarSolicitud(formData) {
           motivo: 'Solicitud auditada desde el panel con envío por email activado',
         }).catch((e) => console.error('Error al agregar a Aprobaciones:', e));
 
-        const cronReq = new Request('http://localhost/api/cron/aprobaciones', {
+        const cronReq = new Request('https://lokigi.vercel.app/api/cron/aprobaciones', {
           method: 'POST',
           headers: {
             'content-type': 'application/json',

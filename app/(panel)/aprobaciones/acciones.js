@@ -3,18 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { actualizar, agregar, uno } from '../../../lib/db/supabase.js';
 import { requerirSesion } from '../../../lib/auth.js';
+import { POST as cronRoute } from '../../api/cron/[tarea]/route.js';
 
 /**
- * Guarda la decisión de Marcelo. NO envía: el envío lo hace la tarea
- * /api/cron/aprobaciones, que corre cada quince minutos por pg_cron.
- *
- * Se separa a propósito. Si el envío ocurriera acá y Gmail tardara, la
- * pantalla quedaría colgada y Marcelo no sabría si aprobó o no. Y si el envío
- * fallara, habría que decidir si la fila queda aprobada o no — un estado a
- * medias que nadie sabe interpretar después.
- *
- * Así: aprobar es instantáneo y siempre funciona. Enviar es otra cosa, con sus
- * propios reintentos, y el guardián la vuelve a evaluar antes de que salga.
+ * Guarda la decisión de Marcelo y dispara la tarea de envío inmediato si se aprobó.
  */
 export async function decidir(formData) {
   await requerirSesion();
@@ -53,6 +45,21 @@ export async function decidir(formData) {
       ? `Marcelo aprobó el paso ${fila.paso} para ${fila.negocio || fila.destinatario}${edito ? ' después de editarlo' : ' sin cambios'}.`
       : `Marcelo rechazó el paso ${fila.paso} para ${fila.negocio || fila.destinatario}. Señal para ajustar el prompt del Redactor.`,
   });
+
+  // Si fue APROBADO, procesar el envío de inmediato a través del circuito del guardián
+  if (decision === 'APROBADO') {
+    const cronReq = new Request('https://lokigi.vercel.app/api/cron/aprobaciones', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-internal-action': 'true',
+        ...(process.env.LOKIGI_API_KEY ? { 'x-api-key': process.env.LOKIGI_API_KEY } : {}),
+      },
+    });
+    await cronRoute(cronReq, { params: Promise.resolve({ tarea: 'aprobaciones' }) }).catch((e) => {
+      console.error('Error al disparar tarea de aprobaciones:', e);
+    });
+  }
 
   revalidatePath('/aprobaciones');
   revalidatePath('/panel');
