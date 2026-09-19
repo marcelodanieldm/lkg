@@ -1,8 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "app/(panel)/competencia/page.jsx": { "maxDuration": 60 },
-    "app/api/barrido/**": { "maxDuration": 60 }
+    "app/api/**": { "maxDuration": 60 }
   },
   "crons": [
     { "path": "/api/cron/supervisor", "schedule": "0 22 * * *" }
