@@ -167,10 +167,36 @@ export default function InformeConciso({ barridoRes }) {
               </li>
             ))}
           </ul>
-        )}
-      </div>
+      {/* g) TRES NUEVOS ANÁLISIS DE DISTRIBUCIÓN */}
+      {comparacion.huecoMercado && comparacion.huecoMercado.sePublica && comparacion.huecoMercado.huecos?.length > 0 && (
+        <div style={styles.seccionEspecialD9}>
+          <h3 style={styles.subtituloAmber}>💡 El Hueco del Mercado (Lo que casi nadie hace)</h3>
+          <ul style={styles.listaPuntos}>
+            {comparacion.huecoMercado.huecos.map(h => (
+              <li key={h.id} style={styles.itemAmber}>
+                <span>🚪</span>
+                <div>{h.texto}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-      {/* g) AL PIE, EL MÉTODO */}
+      {comparacion.liderYReceta && comparacion.liderYReceta.sePublica && comparacion.liderYReceta.texto && (
+        <div style={styles.seccionEspecialSky}>
+          <h3 style={styles.subtituloSky}>👑 El Líder y su Receta</h3>
+          <p style={styles.textoDestacado}>{comparacion.liderYReceta.texto}</p>
+        </div>
+      )}
+
+      {comparacion.umbralEntrada && comparacion.umbralEntrada.sePublica && comparacion.umbralEntrada.texto && (
+        <div style={styles.seccionEspecialGreen}>
+          <h3 style={styles.subtituloGreen}>🎯 El Umbral de Entrada</h3>
+          <p style={styles.textoDestacado}>{comparacion.umbralEntrada.texto}</p>
+        </div>
+      )}
+
+      {/* h) AL PIE, EL MÉTODO */}
       <div style={styles.pieMetodologia}>
         <h4>Metodología y Transparencia del Relevamiento</h4>
         <div style={styles.pieGrid}>
@@ -434,6 +460,64 @@ const styles = {
     marginTop: '24px',
     fontSize: '13px',
     color: '#64748b',
+  },
+  seccionEspecialD9: {
+    marginBottom: '24px',
+    background: '#fffbebfb',
+    border: '1px solid #fde68a',
+    borderLeft: '5px solid #d97706',
+    borderRadius: '8px',
+    padding: '16px',
+  },
+  subtituloAmber: {
+    fontSize: '16px',
+    fontWeight: '700',
+    color: '#b45309',
+    marginBottom: '10px',
+  },
+  itemAmber: {
+    display: 'flex',
+    gap: '10px',
+    alignItems: 'flex-start',
+    background: '#ffffff',
+    padding: '10px 14px',
+    borderRadius: '6px',
+    fontSize: '14px',
+    color: '#78350f',
+  },
+  seccionEspecialSky: {
+    marginBottom: '24px',
+    background: '#f0f9ff',
+    border: '1px solid #bae6fd',
+    borderLeft: '5px solid #0284c7',
+    borderRadius: '8px',
+    padding: '16px',
+  },
+  subtituloSky: {
+    fontSize: '16px',
+    fontWeight: '700',
+    color: '#0369a1',
+    marginBottom: '8px',
+  },
+  seccionEspecialGreen: {
+    marginBottom: '24px',
+    background: '#f0fdf4',
+    border: '1px solid #bbf7d0',
+    borderLeft: '5px solid #16a34a',
+    borderRadius: '8px',
+    padding: '16px',
+  },
+  subtituloGreen: {
+    fontSize: '16px',
+    fontWeight: '700',
+    color: '#15803d',
+    marginBottom: '8px',
+  },
+  textoDestacado: {
+    fontSize: '14.5px',
+    lineHeight: '1.5',
+    color: '#1e293b',
+    margin: 0,
   },
   pieGrid: {
     display: 'grid',

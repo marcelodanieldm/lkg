@@ -232,6 +232,105 @@ test('el linter bloquea cualquier redacción que prometa posición en Google o b
   }
 });
 
+test('los 3 análisis del barrido no se publican si el grupo tiene menos de 10 negocios', () => {
+  const propia = auditar(PERFILES_DEMO.panaderia);
+  const compPocos = Array.from({ length: 8 }, (_, i) => ({
+    placeId: `comp_${i + 1}`,
+    nombre: `Veterinaria ${i + 1}`,
+    distanciaMetros: (i + 1) * 200,
+    anillo: i < 5 ? 'cercano' : 'amplio',
+    auditoria: auditar(PERFILES_DEMO.estudio),
+  }));
+
+  const res = compararPorRegla(propia, compPocos);
+
+  assert.equal(res.huecoMercado, null, 'El hueco del mercado debe ser null si el grupo < 10');
+  assert.equal(res.liderYReceta, null, 'El líder y su receta debe ser null si el grupo < 10');
+  assert.equal(res.umbralEntrada, null, 'El umbral de entrada debe ser null si el grupo < 10');
+});
+
+test('un hueco de mercado no se publica si la regla estaba evaluada en menos del 70% del grupo', () => {
+  const propia = auditar(PERFILES_DEMO.panaderia);
+  // Crear 12 competidores donde solo 5 (menos del 70% de 12, que es 8.4) tienen evaluada la regla X
+  const comp12 = Array.from({ length: 12 }, (_, i) => {
+    const aud = i < 5 ? auditar(PERFILES_DEMO.estudio) : { score: 40, hallazgos: [] };
+    return {
+      placeId: `comp_${i + 1}`,
+      nombre: `Negocio ${i + 1}`,
+      distanciaMetros: (i + 1) * 200,
+      anillo: i < 5 ? 'cercano' : 'amplio',
+      auditoria: aud,
+    };
+  });
+
+  const res = compararPorRegla(propia, comp12);
+  if (res.huecoMercado && res.huecoMercado.huecos) {
+    for (const h of res.huecoMercado.huecos) {
+      assert.ok(h.evaluados / 12 >= 0.70, `La regla ${h.nombre} fue evaluada en ${h.evaluados}/12, debe ser >= 70%`);
+    }
+  }
+});
+
+test('el líder y su receta no se publica si empata con la mediana del grupo y aclara distancia si es mayor a 2 km', () => {
+  const propia = auditar(PERFILES_DEMO.panaderia);
+  // Todos los competidores tienen la misma auditoría (empate total)
+  const compEmpatados = Array.from({ length: 10 }, (_, i) => ({
+    placeId: `comp_${i + 1}`,
+    nombre: `Negocio ${i + 1}`,
+    distanciaMetros: (i + 1) * 200,
+    anillo: i < 5 ? 'cercano' : 'amplio',
+    auditoria: auditar(PERFILES_DEMO.panaderia),
+  }));
+
+  const resEmpate = compararPorRegla(propia, compEmpatados);
+  assert.equal(resEmpate.liderYReceta, null, 'El líder no se publica si empata con la mediana');
+
+  // Ahora con un líder claro con mayor puntaje a más de 2 km (2500m)
+  const compConLiderLejano = Array.from({ length: 11 }, (_, i) => {
+    const aud = i === 0 ? auditar({ ...PERFILES_DEMO.panaderia, cantidadFotos: 30, cantidadResenas: 100, rating: 4.8 }) : auditar({ ...PERFILES_DEMO.estudio, score: 30 });
+    return {
+      placeId: `comp_${i + 1}`,
+      nombre: `Negocio ${i + 1}`,
+      distanciaMetros: i === 0 ? 2500 : (i + 1) * 200,
+      anillo: i < 5 ? 'cercano' : 'amplio',
+      auditoria: aud,
+    };
+  });
+
+  const resLejano = compararPorRegla(propia, compConLiderLejano);
+  if (resLejano.liderYReceta) {
+    assert.equal(resLejano.liderYReceta.esLejano, true);
+    assert.ok(resLejano.liderYReceta.texto.includes('referencia lejana'), 'Debe mencionar que es una referencia lejana');
+  }
+});
+
+test('el umbral de entrada no menciona buscadores ni promesas de posición y pasa el linter', async () => {
+  const { lintear } = await import('../lib/guardrails/guard.js');
+
+  const propia = auditar(PERFILES_DEMO.estudio);
+  const comp12 = Array.from({ length: 12 }, (_, i) => ({
+    placeId: `comp_${i + 1}`,
+    nombre: `Veterinaria ${i + 1}`,
+    distanciaMetros: (i + 1) * 200,
+    anillo: i < 5 ? 'cercano' : 'amplio',
+    auditoria: i < 4 ? auditar(PERFILES_DEMO.panaderia) : auditar(PERFILES_DEMO.estudio),
+  }));
+
+  const res = compararPorRegla(propia, comp12);
+  assert.ok(res.umbralEntrada, 'El umbral de entrada debe generarse');
+
+  const texto = res.umbralEntrada.texto;
+  assert.ok(!/buscadores/i.test(texto.replace('no un puesto en buscadores', '')), 'El texto no debe hacer promesas en buscadores');
+  assert.ok(texto.includes('no un puesto en buscadores'), 'El texto debe declarar la exención sobre buscadores');
+
+  const linterRes = lintear({
+    cuerpo: texto + '\n\nSi preferís no recibir más mensajes, respondé BAJA.',
+    canal: 'email',
+    asunto: 'Asunto válido de prueba para el linter'
+  });
+  assert.equal(linterRes.limpio, true, `El linter rechazó el umbral de entrada: ${linterRes.errores.join(', ')}`);
+});
+
 // Auxiliares de prueba para simular ejecuciones aisladas
 async function test_ejecutarBarridoConMocks({ origenPlaceId, mockPlaces, maxTotal, db }) {
   let llamadasSearch = 0;
