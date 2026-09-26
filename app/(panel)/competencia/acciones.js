@@ -8,7 +8,11 @@ import * as db from '../../../lib/db/supabase.js';
 import { ejecutarBarrido } from '../../../lib/integrations/barrido-engine.js';
 import { detallePlace } from '../../../lib/integrations/places.js';
 import { desdePlacesApi } from '../../../lib/core/normalize.js';
-import { generarCeldaGeo } from '../../../lib/core/competencia.js';
+import { generarCeldaGeo, compararPorRegla } from '../../../lib/core/competencia.js';
+import { evaluar, usarFuente, huella, VEREDICTO } from '../../../lib/guardrails/guard.js';
+import { requerirSesion } from '../../../lib/auth.js';
+
+usarFuente(db);
 
 /**
  * Pre-flight: Estima las llamadas API, costo en USD y verificación de corpus/caché
@@ -223,3 +227,153 @@ export async function encolarCompetidoresSeleccionadosAction(seleccionados = [],
   return { agregados };
 }
 
+/**
+ * Lista las solicitudes que ya tienen auditoría y email para el selector
+ * rápido de la pantalla de competencia.
+ */
+export async function obtenerSolicitudesParaBarridoAction() {
+  await requerirSesion();
+  return db.obtenerSolicitudesAuditadas().catch(() => []);
+}
+
+/**
+ * Genera el cuerpo del mail de competencia a partir del barrido ya completado
+ * y lo encola en Aprobaciones. NUNCA envía directamente: el operador aprueba
+ * en /aprobaciones y el cron ejecuta.
+ *
+ * Asunto fijo: "Informe de estudio de mercado de la competencia próxima"
+ */
+export async function enviarInformeCompetenciaAction({ placeId, email, negocio, urlInforme }) {
+  await requerirSesion();
+
+  if (!placeId || !email) {
+    return { ok: false, error: 'Faltan placeId o email del destinatario.' };
+  }
+
+  // 1. Recuperar el barrido más reciente de este lead
+  const barridoCompleto = await db.obtenerBarridoPorLeadId(placeId).catch(() => null);
+  if (!barridoCompleto || !barridoCompleto.competidores?.length) {
+    return { ok: false, error: 'No hay barrido de competidores disponible para este negocio. Ejecutá el barrido primero.' };
+  }
+
+  // 2. Reconstruir el array de competidores que necesita compararPorRegla()
+  //    barrido_competidores tiene auditado_json con el objeto de auditoría completo
+  const competidores = barridoCompleto.competidores
+    .filter(c => c.auditado_json)
+    .map(c => ({
+      placeId: c.place_id,
+      nombre: c.nombre,
+      distanciaMetros: c.distancia_m,
+      anillo: c.anillo,
+      auditoria: c.auditado_json,
+    }));
+
+  if (competidores.length < 3) {
+    return { ok: false, error: `El barrido tiene solo ${competidores.length} competidor(es) auditado(s). Se necesitan al menos 3 para el análisis.` };
+  }
+
+  // 3. Reconstruir auditoría propia desde la tabla leads
+  const leads = await db.buscar('Leads', l => l.id === placeId || l.place_id === placeId).catch(() => []);
+  const lead = leads[0] ?? null;
+  // La auditoría propia se reconstruye mínimamente desde los campos del lead
+  // que el motor guardó. Para compararPorRegla() necesitamos al menos score y hallazgos.
+  // Si el lead tiene auditoria_json lo usamos; si no, usamos la del primer competidor
+  // con el mismo placeId si existiera, o construimos un objeto mínimo con score.
+  const auditoriaPropia = lead?.auditoria_json
+    ?? { score: lead?.score ?? 0, hallazgos: [], meta: { placeId }, rating: lead?.rating, cantidadResenas: lead?.cantidad_resenas };
+
+  // 4. Ejecutar comparación
+  const comparacion = compararPorRegla(auditoriaPropia, competidores);
+
+  // 5. Armar el cuerpo del mail
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://lokigi.vercel.app';
+  const linkInforme = urlInforme || `${appUrl}/informe/${placeId}`;
+
+  const parrafo1 = comparacion.parrafos?.parrafo1 || '';
+  const parrafo2 = comparacion.parrafos?.parrafo2 || '';
+
+  // Huecos de mercado (hasta 3 hallazgos)
+  const huecos = (comparacion.huecoMercado?.huecos || []).map(h => `• ${h.texto}`).join('\n');
+
+  // Cobertura horaria si aplica
+  const franjas = (comparacion.coberturaHoraria?.franjasDestacadas || []).map(f => `• ${f.texto}`).join('\n');
+
+  const parteHuecos = huecos
+    ? `\nPuntos donde tu zona tiene una brecha:\n${huecos}\n`
+    : '';
+  const parteFranjas = franjas
+    ? `\nCobertura horaria:\n${franjas}\n`
+    : '';
+
+  const cuerpo = [
+    `Hola,`,
+    ``,
+    `Completamos el análisis de la competencia cercana para ${negocio}.`,
+    ``,
+    parrafo1,
+    ``,
+    parrafo2,
+    parteHuecos,
+    parteFranjas,
+    `El informe completo con los datos de tu zona está disponible acá:`,
+    linkInforme,
+    ``,
+    `Si preferís no recibir más mensajes de este tipo, respondé "BAJA".`,
+    ``,
+    `Marcelo`,
+    `Lokigi`,
+    `${appUrl}/baja`,
+  ].join('\n').trim();
+
+  const asunto = 'Informe de estudio de mercado de la competencia próxima';
+
+  // 6. Pasar por el guardián
+  const intencion = {
+    id: huella({ leadId: placeId, canal: 'email', paso: 3, cuerpo }),
+    lead_id: placeId,
+    negocio,
+    canal: 'email',
+    paso: 3,
+    destinatario: email,
+    asunto,
+    cuerpo,
+    creado_en: new Date().toISOString(),
+  };
+
+  const evaluacion = await evaluar(intencion).catch(e => ({ veredicto: 'BLOQUEADO', motivo: e.message }));
+
+  if (evaluacion.veredicto === VEREDICTO.BLOQUEADO) {
+    await db.agregar('Bitacora', {
+      agente: 'operador',
+      accion: 'informe_competencia_bloqueado',
+      lead_id: placeId,
+      decision: 'BLOQUEADO',
+      razon: `${evaluacion.regla}: ${evaluacion.motivo}`,
+    }).catch(() => {});
+    return { ok: false, error: `El guardián bloqueó el envío: ${evaluacion.regla} — ${evaluacion.motivo}` };
+  }
+
+  // 7. Encolar en Aprobaciones (el operador aprueba; el cron lo envía)
+  await db.agregar('Aprobaciones', {
+    id: `aprob_competencia_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    lead_id: placeId,
+    canal: 'email',
+    tipo: 'informe_competencia',
+    destinatario: email,
+    asunto,
+    cuerpo,
+    decision: 'PENDIENTE',
+    regla_bloqueante: null,
+    huella: huella(intencion),
+  });
+
+  await db.agregar('Bitacora', {
+    agente: 'operador',
+    accion: 'informe_competencia_encolado',
+    lead_id: placeId,
+    decision: 'PENDIENTE',
+    razon: `Encolado en Aprobaciones. Destinatario: ${email}`,
+  }).catch(() => {});
+
+  return { ok: true, pendienteAprobacion: true, destinatario: email };
+}

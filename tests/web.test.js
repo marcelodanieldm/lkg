@@ -725,3 +725,52 @@ function recorrer(dirs) {
   for (const d of dirs) visitar(join(RAIZ, d));
   return out;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Clientes y Suscripciones
+// ─────────────────────────────────────────────────────────────────────
+
+test('darDeBajaClienteAction valida motivo minimo de 20 caracteres antes de tocar la base', () => {
+  const acc = leer('app/(panel)/clientes/acciones.js');
+  const fnBaja = acc.slice(acc.indexOf('async function darDeBajaClienteAction'));
+  const validacion = fnBaja.indexOf('motivo.length');
+  const primeraDb   = fnBaja.indexOf('db.');
+  assert.ok(validacion !== -1, 'darDeBajaClienteAction no valida la longitud del motivo');
+  assert.ok(validacion < primeraDb, 'la validacion del motivo ocurre DESPUES de escribir en la base');
+});
+
+test('el webhook de pagos verifica la firma antes de tocar la base de datos', () => {
+  const wh = leer('app/api/webhooks/pagos/route.js');
+  const verificacion = wh.indexOf('verificarFirma');
+  const primeraDb    = wh.indexOf('db.');
+  assert.ok(verificacion !== -1, 'el webhook no verifica la firma de la pasarela');
+  assert.ok(verificacion < primeraDb,
+    'el webhook toca la base de datos antes de verificar la firma');
+});
+
+test('el webhook de pagos no devuelve 500 en ningun caso', () => {
+  const wh = leer('app/api/webhooks/pagos/route.js');
+  assert.ok(!/status:\s*500/.test(wh),
+    'el webhook devuelve 500: pg_cron de la pasarela reintentaria y duplicaria registros');
+});
+
+test('/clientes esta dentro del grupo (panel) y queda protegida por su layout', () => {
+  assert.ok(
+    existsSync(join(RAIZ, 'app/(panel)/clientes/page.jsx')),
+    'la pantalla /clientes no existe en app/(panel)/clientes/page.jsx'
+  );
+  assert.ok(
+    !existsSync(join(RAIZ, 'app/clientes/page.jsx')),
+    'existe app/clientes/page.jsx fuera del grupo (panel): cualquier visitante puede verla'
+  );
+});
+
+test('la migracion 012 existe y agrega las columnas de pasarela y estado_pago', () => {
+  assert.ok(
+    existsSync(join(RAIZ, 'supabase/migrations/012_clientes_pagos.sql')),
+    'falta supabase/migrations/012_clientes_pagos.sql'
+  );
+  const sql = leer('supabase/migrations/012_clientes_pagos.sql');
+  assert.ok(/pasarela/i.test(sql), 'la migracion 012 no agrega la columna pasarela');
+  assert.ok(/estado_pago/i.test(sql), 'la migracion 012 no agrega la columna estado_pago');
+});

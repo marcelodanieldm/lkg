@@ -7,6 +7,7 @@ import { requerirSesion } from '../../../lib/auth.js';
 import { POST as auditarRoute } from '../../api/auditar/route.js';
 import { POST as cronRoute } from '../../api/cron/[tarea]/route.js';
 import { agenteSugeridorMensaje } from '../../../lib/ia/gemini.js';
+import { resumenCorto } from '../../../lib/core/report.js';
 import { huella, evaluar, VEREDICTO, usarFuente } from '../../../lib/guardrails/guard.js';
 
 usarFuente(db);
@@ -99,12 +100,8 @@ export async function auditarSolicitud(formData) {
 
       let intro = sugerido ? `${sugerido}\n\n` : '';
       if (!intro) {
-        // No usar resumenCorto(data): la API serializa banda como string, pero
-        // resumenCorto espera el objeto banda interno con .etiqueta → undefined → crash.
-        const hallazgoTop = (data.hallazgos || [])[0];
-        const hallTop = hallazgoTop ? hallazgoTop.titulo : '';
-        const hallDet = hallazgoTop ? `${hallazgoTop.evidencia || ''} ${hallazgoTop.recomendacion || ''}`.trim() : '';
-        const hallazgoTxt = hallTop ? `Un hallazgo clave para impulsar la visibilidad de tu negocio:\n\n${hallTop}\n${hallDet}\n\n` : '';
+        const resShort = resumenCorto(data);
+        const hallazgoTxt = resShort.hallazgoTop ? `Un hallazgo clave para impulsar la visibilidad de tu negocio:\n\n${resShort.hallazgoTop}\n${resShort.hallazgoTopDetalle}\n\n` : '';
         intro = `Hola,\n\nAnalizamos el perfil de Google Maps de ${data.negocio || negocio}. Tu puntaje actual es de ${data.score}/100, con un potencial alcanzable de ${data.potencial}/100.\n\n${hallazgoTxt}`;
       }
       const urlPago = `${informeUrl}#presupuesto`;
@@ -197,3 +194,4 @@ export async function contactarSolicitud(formData) {
     revalidatePath('/panel');
   }
 }
+

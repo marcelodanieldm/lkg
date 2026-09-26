@@ -10,13 +10,15 @@
  * 4. Botón de exportación de CSV con instruccional para Power BI / Excel.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import InformeConciso from './InformeConciso.jsx';
 import {
   estimarBarridoAction,
   ejecutarBarridoAction,
   obtenerEstadoProspeccionCompetidoresAction,
   encolarCompetidoresSeleccionadosAction,
+  obtenerSolicitudesParaBarridoAction,
+  enviarInformeCompetenciaAction,
 } from './acciones.js';
 
 export const maxDuration = 60;
@@ -36,6 +38,73 @@ export default function CompetenciaPage() {
   const [ordenComp, setOrdenComp] = useState('reciente');
   const [paginaComp, setPaginaComp] = useState(1);
   const ITEMS_PER_PAGE_COMP = 10;
+
+  // ── Selector de solicitudes auditadas ─────────────────────────────────
+  const [solicitudes, setSolicitudes] = useState([]);
+  const [solicitudSel, setSolicitudSel] = useState(null); // { placeId, email, negocio }
+
+  // ── Panel de envío de informe de competencia ──────────────────────────
+  const [emailDestino, setEmailDestino] = useState('');
+  const [enviandoMail, setEnviandoMail] = useState(false);
+  const [resultadoMail, setResultadoMail] = useState(null); // { ok, error?, destinatario? }
+
+  // Cargar solicitudes auditadas al montar el componente
+  useEffect(() => {
+    obtenerSolicitudesParaBarridoAction()
+      .then(lista => setSolicitudes(lista || []))
+      .catch(() => setSolicitudes([]));
+  }, []);
+
+  // Cuando el operador selecciona una solicitud del dropdown, pre-rellena el placeId y el email
+  function handleSeleccionarSolicitud(e) {
+    const id = e.target.value;
+    if (!id) {
+      setSolicitudSel(null);
+      setEmailDestino('');
+      return;
+    }
+    const sol = solicitudes.find(s => s.id === id);
+    if (sol) {
+      setSolicitudSel(sol);
+      setPlaceIdInput(sol.place_id);
+      setEmailDestino(sol.email);
+      setResultadoMail(null);
+    }
+  }
+
+  // Enviar el informe de competencia por mail (encola en Aprobaciones)
+  async function handleEnviarInformeCompetencia() {
+    if (!placeIdInput.trim() || !emailDestino.trim()) {
+      alert('Necesitás el Place ID y el email del destinatario.');
+      return;
+    }
+    if (!barridoRes) {
+      alert('Ejecutá el barrido primero para tener datos de competencia disponibles.');
+      return;
+    }
+    setEnviandoMail(true);
+    setResultadoMail(null);
+    try {
+      const r = await enviarInformeCompetenciaAction({
+        placeId: placeIdInput.trim(),
+        email: emailDestino.trim(),
+        negocio: solicitudSel?.negocio || estimacion?.nombre || placeIdInput.trim(),
+        urlInforme: barridoRes?.urlInforme || null,
+      });
+      setResultadoMail(r);
+      if (r.ok) {
+        alert(`✅ Informe de competencia encolado en Aprobaciones. El mail saldrá cuando lo apruebes en /aprobaciones.\nDestinatario: ${r.destinatario}`);
+      } else {
+        alert(`❌ No se pudo encolar el informe: ${r.error}`);
+      }
+    } catch (err) {
+      const msg = err.message || String(err);
+      setResultadoMail({ ok: false, error: msg });
+      alert(`❌ Error al encolar el informe: ${msg}`);
+    } finally {
+      setEnviandoMail(false);
+    }
+  }
 
   // 1. Estimar barrido (Pre-flight de costos sin gastar llamadas de búsqueda)
   async function handleEstimar(e) {
@@ -163,6 +232,30 @@ export default function CompetenciaPage() {
 
       {errorMsg && <div style={styles.errorBox}>⚠ {errorMsg}</div>}
 
+      {/* ── Acceso rápido desde solicitudes auditadas ────────────────── */}
+      {solicitudes.length > 0 && (
+        <div style={{ ...styles.formCard, background: '#f0f9ff', borderColor: '#0ea5e9' }}>
+          <h2 style={{ ...styles.preflightTitulo, color: '#0369a1', marginBottom: '12px' }}>
+            📋 Cargar desde solicitud auditada
+          </h2>
+          <p style={{ fontSize: '13px', color: '#475569', marginBottom: '12px' }}>
+            Seleccioná una solicitud para pre-cargar el Place ID y el email del solicitante.
+          </p>
+          <select
+            onChange={handleSeleccionarSolicitud}
+            style={{ ...styles.input, cursor: 'pointer' }}
+            defaultValue=""
+          >
+            <option value="">— Elegir solicitud —</option>
+            {solicitudes.map(s => (
+              <option key={s.id} value={s.id}>
+                {s.negocio} {s.ciudad ? `· ${s.ciudad}` : ''} · {s.email}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Formulario de Entrada */}
       <form onSubmit={handleEstimar} style={styles.formCard}>
         <div style={styles.fieldGroup}>
@@ -241,6 +334,75 @@ export default function CompetenciaPage() {
 
       {/* Renderizado del Informe Conciso */}
       {barridoRes && <InformeConciso barridoRes={barridoRes} />}
+
+      {/* ── Enviar informe de competencia al solicitante ─────────────── */}
+      {barridoRes && (
+        <div style={{ ...styles.exportCard, borderColor: '#16a34a', background: '#f0fdf4' }}>
+          <h3 style={{ ...styles.exportTitulo, color: '#15803d' }}>
+            ✉️ Enviar informe de estudio de mercado al solicitante
+          </h3>
+          <p style={{ fontSize: '13px', color: '#166534', marginBottom: '14px' }}>
+            Genera un correo con el análisis de competencia y lo encola en{' '}
+            <strong>Aprobaciones</strong>. El mail sale únicamente cuando vos lo
+            aprobás desde <a href="/aprobaciones" style={{ color: '#16a34a' }}>/aprobaciones</a>.
+          </p>
+
+          <div style={{ marginBottom: '10px' }}>
+            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px', fontWeight: '600' }}>
+              ASUNTO (fijo):
+            </div>
+            <div style={{
+              background: '#dcfce7', border: '1px solid #86efac', borderRadius: '6px',
+              padding: '8px 12px', fontSize: '13px', color: '#166534', fontStyle: 'italic',
+            }}>
+              Informe de estudio de mercado de la competencia próxima
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '14px' }}>
+            <label style={{ ...styles.label, display: 'block', marginBottom: '4px' }}>
+              Email del destinatario:
+            </label>
+            <input
+              type="email"
+              value={emailDestino}
+              onChange={e => setEmailDestino(e.target.value)}
+              placeholder="email@ejemplo.com"
+              style={{ ...styles.input, maxWidth: '380px' }}
+            />
+            {!emailDestino && solicitudSel && (
+              <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>
+                Sin email — el solicitante no dejó email de contacto.
+              </p>
+            )}
+          </div>
+
+          <button
+            onClick={handleEnviarInformeCompetencia}
+            disabled={enviandoMail || !emailDestino.trim()}
+            style={{
+              padding: '10px 22px', background: enviandoMail || !emailDestino.trim() ? '#86efac' : '#16a34a',
+              color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700',
+              fontSize: '14px', cursor: enviandoMail || !emailDestino.trim() ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {enviandoMail ? 'Encolando...' : '📨 Encolar informe en Aprobaciones'}
+          </button>
+
+          {resultadoMail && (
+            <div style={{
+              marginTop: '12px', padding: '10px 14px', borderRadius: '8px',
+              background: resultadoMail.ok ? '#dcfce7' : '#fef2f2',
+              border: `1px solid ${resultadoMail.ok ? '#86efac' : '#fca5a5'}`,
+              fontSize: '13px', color: resultadoMail.ok ? '#166534' : '#b91c1c',
+            }}>
+              {resultadoMail.ok
+                ? `✅ Encolado para ${resultadoMail.destinatario}. Revisá /aprobaciones para aprobarlo.`
+                : `❌ ${resultadoMail.error}`}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Sección de Exportación Power BI / Excel */}
       {barridoRes && barridoRes.barridoId && (

@@ -16,6 +16,7 @@ const PANTALLAS = [
   ['/solicitudes', 'Solicitudes'],
   ['/aprobaciones', 'Aprobaciones'],
   ['/leads', 'Leads'],
+  ['/clientes', 'Clientes'],
   ['/competencia', 'Competencia'],
   ['/simulacro', 'Simulacro'],
   ['/guia', 'Guía'],
